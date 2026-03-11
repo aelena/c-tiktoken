@@ -4,6 +4,7 @@
 
 #include "tiktoken/arena.h"
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -28,8 +29,18 @@ uint8_t *arena_alloc(Arena *a, size_t size, size_t align) {
 
     if (needed > a->cap) {
         // Grow: at least double, or enough for the request.
-        size_t new_cap = a->cap * 2;
-        if (new_cap < needed) new_cap = needed;
+        // Check for overflow when doubling capacity.
+        size_t new_cap;
+        if (a->cap > SIZE_MAX / 2) {
+            // Can't double without overflow, use needed directly (if it fits)
+            if (needed > SIZE_MAX) {
+                return nullptr;  // Requested size exceeds maximum
+            }
+            new_cap = needed;
+        } else {
+            new_cap = a->cap * 2;
+            if (new_cap < needed) new_cap = needed;
+        }
         uint8_t *new_base = realloc(a->base, new_cap);
         if (new_base == nullptr) {
             return nullptr;

@@ -132,7 +132,12 @@ static void b2i_insert_entry(B2iEntry *slots, size_t cap, B2iEntry entry) {
 
 // Grow the table by doubling capacity and re-inserting all entries.
 static bool b2i_grow(B2iMap *m) {
-    size_t new_cap = m->cap * 2;
+    size_t new_cap;
+    if (m->cap > SIZE_MAX / 2) {
+        // Can't double without overflow
+        return false;
+    }
+    new_cap = m->cap * 2;
     B2iEntry *new_slots = calloc(new_cap, sizeof(B2iEntry));
     if (new_slots == nullptr) {
         return false;
@@ -253,7 +258,12 @@ static void i2b_insert_entry(I2bEntry *slots, size_t cap, I2bEntry entry) {
 }
 
 static bool i2b_grow(I2bMap *m) {
-    size_t new_cap = m->cap * 2;
+    size_t new_cap;
+    if (m->cap > SIZE_MAX / 2) {
+        // Can't double without overflow
+        return false;
+    }
+    new_cap = m->cap * 2;
     I2bEntry *new_slots = calloc(new_cap, sizeof(I2bEntry));
     if (new_slots == nullptr) {
         return false;

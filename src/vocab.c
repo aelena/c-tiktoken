@@ -7,6 +7,7 @@
 #include "tiktoken/bytes.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -181,17 +182,26 @@ VocabResult vocab_load_file(const char *path) {
         return result;
     }
 
+    // Validate file size fits in size_t and is reasonable.
+    if ((unsigned long)file_size > SIZE_MAX) {
+        fclose(f);
+        return result;
+    }
+
+    size_t file_size_t = (size_t)file_size;
+
     // Read entire file into memory.
-    char *buf = malloc((size_t)file_size);
+    char *buf = malloc(file_size_t);
     if (buf == nullptr) {
         fclose(f);
         return result;
     }
 
-    size_t read_size = fread(buf, 1, (size_t)file_size, f);
+    size_t read_size = fread(buf, 1, file_size_t, f);
     fclose(f);
 
-    if (read_size == 0) {
+    // Verify we read the expected amount.
+    if (read_size != file_size_t) {
         free(buf);
         return result;
     }

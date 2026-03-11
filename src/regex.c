@@ -13,6 +13,7 @@
 
 #include "tiktoken/regex.h"
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -97,7 +98,15 @@ void regex_free(Regex *re) {
 
 static bool matchvec_push(RegexMatchVec *v, RegexMatch m) {
     if (v->len >= v->cap) {
-        size_t new_cap = v->cap ? v->cap * 2 : 64;
+        size_t new_cap;
+        if (v->cap == 0) {
+            new_cap = 64;
+        } else if (v->cap > SIZE_MAX / 2) {
+            // Can't double without overflow
+            return false;
+        } else {
+            new_cap = v->cap * 2;
+        }
         RegexMatch *new_items = realloc(v->items, new_cap * sizeof(RegexMatch));
         if (new_items == nullptr) return false;
         v->items = new_items;

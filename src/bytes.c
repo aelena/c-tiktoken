@@ -4,6 +4,7 @@
 
 #include "tiktoken/bytes.h"
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -35,6 +36,15 @@
 static inline size_t grow_cap(size_t current, size_t needed) {
     size_t cap = current ? current : 16;
     while (cap < needed) {
+        // Check for overflow when doubling capacity.
+        if (cap > SIZE_MAX / 2) {
+            // Can't double without overflow, use needed directly (if it fits)
+            if (needed > SIZE_MAX) {
+                return 0;  // Error: requested size exceeds maximum
+            }
+            cap = needed;
+            break;
+        }
         cap *= 2;
     }
     return cap;
@@ -97,6 +107,9 @@ static bool bytes_ensure(Bytes *b, size_t extra) {
         return true;
     }
     size_t new_cap = grow_cap(b->cap, needed);
+    if (new_cap == 0) {
+        return false;  // Overflow or invalid size
+    }
     uint8_t *new_data = realloc(b->data, new_cap);
     if (new_data == nullptr) {
         return false;
@@ -199,6 +212,9 @@ ByteVec bytevec_new(void) {
 bool bytevec_push(ByteVec *v, Bytes b) {
     if (v->len >= v->cap) {
         size_t new_cap = grow_cap(v->cap, v->len + 1);
+        if (new_cap == 0) {
+            return false;  // Overflow or invalid size
+        }
         Bytes *new_items = realloc(v->items, new_cap * sizeof(Bytes));
         if (new_items == nullptr) {
             return false;
@@ -228,6 +244,9 @@ TokenVec tokvec_new(void) {
 bool tokvec_push(TokenVec *v, uint32_t token) {
     if (v->len >= v->cap) {
         size_t new_cap = grow_cap(v->cap, v->len + 1);
+        if (new_cap == 0) {
+            return false;  // Overflow or invalid size
+        }
         uint32_t *new_items = realloc(v->items, new_cap * sizeof(uint32_t));
         if (new_items == nullptr) {
             return false;
@@ -244,6 +263,9 @@ bool tokvec_extend(TokenVec *v, const uint32_t *src, size_t n) {
     size_t needed = v->len + n;
     if (needed > v->cap) {
         size_t new_cap = grow_cap(v->cap, needed);
+        if (new_cap == 0) {
+            return false;  // Overflow or invalid size
+        }
         uint32_t *new_items = realloc(v->items, new_cap * sizeof(uint32_t));
         if (new_items == nullptr) {
             return false;

@@ -52,7 +52,8 @@ static int find_next_special(const TiktokenEncoding *enc,
         const char *needle = enc->special_tokens[i].text;
         size_t needle_len  = enc->special_tokens[i].text_len;
 
-        if (needle_len == 0 || needle_len > text_len - start) continue;
+        // Check bounds to avoid integer underflow: if start >= text_len, skip
+        if (needle_len == 0 || start >= text_len || needle_len > text_len - start) continue;
 
         // Simple substring search. For a production tokenizer with many
         // special tokens, you'd use Aho-Corasick. For tiktoken's ~5
