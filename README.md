@@ -57,6 +57,29 @@ cd build
 ctest
 ```
 
+#### Integration Tests
+
+The integration tests compare the C implementation against the official Python tiktoken library. To run them:
+
+1. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Download the vocabulary file (if not already present):
+   ```bash
+   curl -o data/cl100k_base.tiktoken \
+     https://openaipublic.blob.core.windows.net/encodings/cl100k_base.tiktoken
+   ```
+
+3. Run the integration test:
+   ```bash
+   cd build
+   ./test_integration
+   ```
+
+The integration test will automatically skip if the Python reference script or vocabulary file is not available.
+
 ### Running Examples
 
 ```bash

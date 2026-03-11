@@ -76,6 +76,10 @@ add_executable(test_encoding tests/test_encoding.c)
 target_link_libraries(test_encoding PRIVATE tiktoken)
 add_test(NAME encoding COMMAND test_encoding)
 
+add_executable(test_integration tests/test_integration.c)
+target_link_libraries(test_integration PRIVATE tiktoken)
+add_test(NAME integration COMMAND test_integration)
+
 # Examples
 add_executable(count_tokens examples/count_tokens.c)
 target_link_libraries(count_tokens PRIVATE tiktoken)
