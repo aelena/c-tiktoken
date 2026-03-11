@@ -1,5 +1,10 @@
 # c-tiktoken
 
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![C Standard](https://img.shields.io/badge/C-C23-orange)
+![Integration Tests](https://img.shields.io/badge/integration%20tests-Python%20tiktoken-yellow)
+
 A C implementation of OpenAI's tiktoken tokenizer, built from scratch as an educational tutorial.
 
 ## Overview
@@ -50,16 +55,79 @@ cmake ..
 make
 ```
 
+## Tests
+
+This project includes a comprehensive test suite covering all components of the tokenizer implementation. The tests are organized into two categories: **unit tests** for individual components and **integration tests** that validate against the official Python tiktoken library.
+
+### Test Suites
+
+#### Unit Tests
+
+The unit tests verify each component in isolation using synthetic test data:
+
+- **`test_base64`** — Base64 decoding functionality
+  - Tests decoding of various base64 encodings
+  - Validates padding handling and error cases
+  
+- **`test_bytes`** — Byte string operations
+  - Tests dynamic byte arrays, slicing, and memory management
+  - Validates UTF-8 handling and byte manipulation
+  
+- **`test_hash`** — Hash map implementation
+  - Tests Robin Hood hashing algorithm
+  - Validates insertion, lookup, and resizing behavior
+  
+- **`test_bpe`** — Byte Pair Encoding algorithm
+  - Tests BPE merge operations with hand-crafted vocabularies
+  - Validates encoding and decoding roundtrips
+  
+- **`test_regex`** — Regex pre-tokenization
+  - Tests PCRE2 integration and pattern matching
+  - Validates cl100k_base pattern behavior (contractions, numbers, Unicode)
+  
+- **`test_vocab`** — Vocabulary loading
+  - Tests parsing of .tiktoken vocabulary files
+  - Validates base64 decoding and rank parsing
+  
+- **`test_encoding`** — High-level encoding API
+  - Tests complete encode/decode pipeline
+  - Validates special token handling and roundtrip encoding
+
+#### Integration Tests
+
+**`test_integration`** — Validates against official Python tiktoken library
+
+These tests are the **gold standard** for correctness. They:
+
+1. Encode text using the C implementation
+2. Call the official Python tiktoken library to get expected results
+3. Compare token IDs byte-for-byte to ensure perfect compatibility
+
+**Test Coverage:**
+- Simple text encoding
+- Empty strings and edge cases
+- Numbers, punctuation, and contractions
+- Unicode characters (e.g., "Hello 世界 🌍")
+- Newlines and whitespace handling
+- Special tokens (`<|endoftext|>`, etc.)
+- Mixed special and ordinary text
+
+The integration tests use the real `cl100k_base` vocabulary file (used by GPT-4) and ensure that the C implementation produces **identical** tokenization results to OpenAI's official library.
+
 ### Running Tests
+
+#### All Unit Tests
 
 ```bash
 cd build
 ctest
 ```
 
+This runs all unit tests via CMake's test framework.
+
 #### Integration Tests
 
-The integration tests compare the C implementation against the official Python tiktoken library. To run them:
+The integration tests require Python and the official tiktoken library:
 
 1. Install Python dependencies:
    ```bash
@@ -78,7 +146,14 @@ The integration tests compare the C implementation against the official Python t
    ./test_integration
    ```
 
-The integration test will automatically skip if the Python reference script or vocabulary file is not available.
+The integration test will automatically skip if the Python reference script or vocabulary file is not available, making it safe to run in CI/CD environments where Python might not be installed.
+
+### Test Philosophy
+
+- **Unit tests** use synthetic data to verify algorithm correctness
+- **Integration tests** use real vocabulary files and compare against the official implementation
+- All tests are self-contained and don't require external test frameworks
+- Tests provide clear pass/fail output with detailed error messages
 
 ### Running Examples
 
