@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:openaipublic.blob.core.windows.net)",
+      "Bash(cd \"/c/Users/anton/OneDrive/My Digital Projects/c-tiktoken\" && mkdir -p include/tiktoken src tutorial tests examples data)",
+      "Bash(gcc --version 2>/dev/null || echo \"no gcc\"; clang --version 2>/dev/null || echo \"no clang\")",
+      "Bash(cmake --version 2>/dev/null || echo \"no cmake\")",
+      "Bash(wsl -l -v 2>/dev/null || echo \"no WSL distros\")",
+      "Bash(wsl -d Ubuntu -- bash -c \"which gcc && gcc --version | head -1; which gcc-14 && gcc-14 --version | head -1; which cmake && cmake --version | head -1; which clang && clang --version | head -1\")",
+      "Bash(wsl -d Ubuntu -- bash -c \"dpkg -l gcc cmake build-essential 2>&1 | tail -5; echo '==='; apt list --installed 2>/dev/null | grep -E 'gcc|cmake|clang' | head -10\")",
+      "Bash(wsl -d Ubuntu -- sudo apt update -y 2>&1 | tail -3)",
+      "Bash(wsl -d Ubuntu -- sudo apt install -y gcc-14 cmake pkg-config libpcre2-dev 2>&1 | tail -10)",
+      "Bash(wsl -d Ubuntu -- bash -c \"ps aux | grep -E 'apt|dpkg' | grep -v grep | head -5\")",
+      "Bash(wsl -d Ubuntu -- bash -c \"dpkg -l gcc-14 cmake pkg-config libpcre2-dev 2>&1 | grep -E '^ii|no packages'\")",
+      "Bash(wsl -d Ubuntu -- sudo kill -9 311 393 2>/dev/null; wsl -d Ubuntu -- sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock 2>/dev/null; echo \"cleaned\")",
+      "Bash(wsl --terminate Ubuntu 2>&1; echo \"terminated\")",
+      "Bash(wsl -d Ubuntu -- bash -c \"sudo apt-get update -qq && sudo apt-get install -y -qq gcc-14 cmake pkg-config libpcre2-dev 2>&1 | tail -20\")",
+      "Bash(wsl --terminate Ubuntu 2>&1; echo \"done\")",
+      "Bash(wsl -d Ubuntu -- whoami 2>&1)",
+      "Bash(wsl -d Ubuntu -- sudo -n apt-get update 2>&1 | head -5)",
+      "Bash(wsl --terminate Ubuntu 2>&1; echo \"ok\")",
+      "Bash(wsl -d Ubuntu -- dpkg -l gcc-14 cmake pkg-config libpcre2-dev 2>&1 | grep -E '^ii|no packages')"
+    ]
+  }
+}
