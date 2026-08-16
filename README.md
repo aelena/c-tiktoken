@@ -180,6 +180,12 @@ This repository includes a comprehensive tutorial that walks you through buildin
 
 **Start with [Chapter 1](tutorial/chapter01_base64.md) to begin the tutorial.**
 
+### As a book
+
+The same eight chapters are also available as a typeset 54-page PDF, *Build a Tokenizer in C*, at **[aelena74.gumroad.com](https://aelena74.gumroad.com)**.
+
+The chapters above are free and stay free. The PDF is the convenience version — front matter, one continuous document, proper typography — and you can build it yourself from [`book/`](book/) if you would rather spend five minutes than the price of a coffee. The instructions there are complete and not deliberately hobbled.
+
 ## Usage
 
 ### Basic Example

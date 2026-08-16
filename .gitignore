@@ -10,3 +10,6 @@ CMakeUserPresets.json
 compile_commands.json
 .vscode/
 .idea/
+
+# Built book — sold as the typeset convenience version; build it from book/ if you prefer
+book/*.pdf
