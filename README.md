@@ -1,9 +1,8 @@
 # c-tiktoken
 
-![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+[![tests](https://github.com/aelena/c-tiktoken/actions/workflows/tests.yml/badge.svg)](https://github.com/aelena/c-tiktoken/actions/workflows/tests.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![C Standard](https://img.shields.io/badge/C-C23-orange)
-![Integration Tests](https://img.shields.io/badge/integration%20tests-Python%20tiktoken-yellow)
 
 A C implementation of OpenAI's tiktoken tokenizer, built from scratch as an educational tutorial.
 
@@ -68,8 +67,10 @@ c-tiktoken/
 ### Prerequisites
 
 - CMake 3.25 or later
-- C23-compatible compiler (GCC 13+, Clang 16+)
-- PCRE2 library (libpcre2-dev on Debian/Ubuntu, pcre2 on macOS/Homebrew)
+- **GCC 13 or newer, or Clang 19 or newer.** Clang 18 and earlier cannot build
+  this: C23 `constexpr` for objects arrived in Clang 19. GCC 13, GCC 14 and
+  Clang 19 are all built and tested in CI.
+- PCRE2 (`libpcre2-dev` on Debian/Ubuntu, `pcre2` on Homebrew)
 
 ### Build Instructions
 
@@ -128,15 +129,24 @@ This is the only test that can tell you the implementation is *correct* rather t
 2. Call the official Python tiktoken library to get expected results
 3. Compare token IDs byte-for-byte to ensure perfect compatibility
 
-**Cases currently compared:**
-- `Hello, world!`
-- `Hello, world! How are you?` for punctuation
-- `Hello 世界 🌍` for multi-byte UTF-8
-- `Hello<|endoftext|>world` for special tokens mixed with ordinary text
+**Cases compared, all ten passing** against the real `cl100k_base` vocabulary
+that GPT-4 uses:
 
-Four cases, against the real `cl100k_base` vocabulary that GPT-4 uses. Extending
-the list is one line each in `tests/test_integration.c`, and worth doing: empty
-input, whitespace runs and contractions are all untested against the reference.
+| | |
+|---|---|
+| `Hello, world!` | the base case |
+| the empty string | the case most implementations get wrong |
+| `hello` | single word, no leading space |
+| `12345` | numbers, which the pattern splits in runs of at most three digits |
+| `Hello, world! How are you?` | punctuation |
+| `I'm don't won't` | contractions, which have their own pattern branch |
+| `Hello 世界 🌍` | two, three and four-byte UTF-8 |
+| `Line 1\nLine 2\r\nLine 3` | both newline conventions, LF and CRLF |
+| `<\|endoftext\|>` | a special token alone |
+| `Hello<\|endoftext\|>world` | a special token between ordinary text |
+
+CI runs these on every push and fails if any of them is skipped, so the badge
+above means "agrees with OpenAI" and not merely "compiles".
 
 ### Running Tests
 
