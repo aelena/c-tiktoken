@@ -149,8 +149,15 @@ VocabResult vocab_load_mem(const char *data, size_t data_len) {
 
             if (parse_line(cursor, line_len, &result.arena,
                            &token_bytes, &rank)) {
-                b2i_insert(&result.ranks.encoder, token_bytes, rank);
-                i2b_insert(&result.ranks.decoder, rank, token_bytes);
+                // Both directions or neither. A vocabulary missing entries
+                // still loads and then mistokenises every input that touches
+                // the gap, silently and forever — so an insertion failure
+                // has to fail the whole load, not one line of it.
+                if (!b2i_insert(&result.ranks.encoder, token_bytes, rank)
+                    || !i2b_insert(&result.ranks.decoder, rank, token_bytes)) {
+                    vocab_free(&result);
+                    return result;
+                }
                 result.ranks.vocab_size++;
             }
         }

@@ -100,8 +100,15 @@ static TokenVec encode_segment(const TiktokenEncoding *enc,
         TokenVec chunk_tokens = bpe_encode(&enc->vocab.ranks,
                                            chunk, chunk_len);
 
-        tokvec_extend(&result, chunk_tokens.items, chunk_tokens.len);
+        bool ok = tokvec_extend(&result, chunk_tokens.items,
+                                chunk_tokens.len);
         tokvec_free(&chunk_tokens);
+
+        if (!ok) {
+            tokvec_free(&result);
+            regexmatchvec_free(&matches);
+            return result;
+        }
     }
 
     regexmatchvec_free(&matches);
@@ -144,8 +151,12 @@ TokenVec tiktoken_encode(const TiktokenEncoding *enc,
             // No more special tokens — encode the rest as ordinary.
             TokenVec seg = encode_segment(enc, text + cursor,
                                           text_len - cursor);
-            tokvec_extend(&result, seg.items, seg.len);
+            bool ok = tokvec_extend(&result, seg.items, seg.len);
             tokvec_free(&seg);
+            if (!ok) {
+                tokvec_free(&result);
+                return result;
+            }
             break;
         }
 
@@ -159,12 +170,19 @@ TokenVec tiktoken_encode(const TiktokenEncoding *enc,
         if (special_pos > cursor) {
             TokenVec seg = encode_segment(enc, text + cursor,
                                           special_pos - cursor);
-            tokvec_extend(&result, seg.items, seg.len);
+            bool ok = tokvec_extend(&result, seg.items, seg.len);
             tokvec_free(&seg);
+            if (!ok) {
+                tokvec_free(&result);
+                return result;
+            }
         }
 
         // Add the special token directly.
-        tokvec_push(&result, enc->special_tokens[special_idx].token_id);
+        if (!tokvec_push(&result, enc->special_tokens[special_idx].token_id)) {
+            tokvec_free(&result);
+            return result;
+        }
 
         cursor = special_pos + enc->special_tokens[special_idx].text_len;
     }
@@ -194,9 +212,12 @@ Bytes tiktoken_decode(const TiktokenEncoding *enc,
         bool found_special = false;
         for (size_t j = 0; j < enc->n_special; j++) {
             if (enc->special_tokens[j].token_id == tokens[i]) {
-                bytes_append(&result,
-                             (const uint8_t *)enc->special_tokens[j].text,
-                             enc->special_tokens[j].text_len);
+                if (!bytes_append(&result,
+                                  (const uint8_t *)enc->special_tokens[j].text,
+                                  enc->special_tokens[j].text_len)) {
+                    bytes_free(&result);
+                    return result;
+                }
                 found_special = true;
                 break;
             }
@@ -204,8 +225,11 @@ Bytes tiktoken_decode(const TiktokenEncoding *enc,
 
         if (!found_special) {
             Bytes token_bytes = {};
-            if (i2b_get(&enc->vocab.ranks.decoder, tokens[i], &token_bytes)) {
-                bytes_append(&result, token_bytes.data, token_bytes.len);
+            if (i2b_get(&enc->vocab.ranks.decoder, tokens[i], &token_bytes)
+                && !bytes_append(&result, token_bytes.data,
+                                 token_bytes.len)) {
+                bytes_free(&result);
+                return result;
             }
         }
     }
