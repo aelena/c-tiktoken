@@ -1,4 +1,4 @@
-# Chapter 5 — Regex Pre-tokenization
+# Chapter 5: Regex Pre-tokenization
 
 ## Why Pre-tokenize?
 
@@ -38,7 +38,7 @@ GPT-4 uses the cl100k_base encoding with this regex pattern:
 Each alternative (separated by `|`) matches a different type of text
 chunk. Let's break them down:
 
-### `(?i:'s|'t|'re|'ve|'m|'ll|'d)` — Contractions
+### `(?i:'s|'t|'re|'ve|'m|'ll|'d)`: Contractions
 
 The `(?i:...)` group enables case-insensitive matching. This captures
 English contractions: "don**'t**", "I**'m**", "they**'re**", etc.
@@ -46,7 +46,7 @@ English contractions: "don**'t**", "I**'m**", "they**'re**", etc.
 By matching contractions first, we prevent them from being split in
 unexpected ways. Without this, "don't" might become ["don", "'", "t"].
 
-### `[^\r\n\p{L}\p{N}]?\p{L}+` — Words
+### `[^\r\n\p{L}\p{N}]?\p{L}+`: Words
 
 `\p{L}` matches any Unicode letter (Latin, Cyrillic, Chinese, etc.).
 `\p{N}` matches any Unicode number.
@@ -56,25 +56,25 @@ non-letter, non-number character (like a space or punctuation). The
 effect is that words get their leading space attached: `" hello"` is
 one chunk, not `" "` + `"hello"`.
 
-### `\p{N}{1,3}` — Numbers
+### `\p{N}{1,3}`: Numbers
 
 Matches 1 to 3 digits at a time. This means `12345` becomes `["123",
-"45"]` — numbers are tokenized in chunks of at most 3 digits. This
+"45"]`: numbers are tokenized in chunks of at most 3 digits. This
 prevents very long numbers from becoming single tokens.
 
-### ` ?[^\s\p{L}\p{N}]++[\r\n]*` — Punctuation
+### ` ?[^\s\p{L}\p{N}]++[\r\n]*`: Punctuation
 
 Matches punctuation sequences (optionally preceded by a space), with
-any trailing newlines. The `++` is a **possessive quantifier** — it
+any trailing newlines. The `++` is a **possessive quantifier**: it
 doesn't backtrack. This is important for performance and is why we
 need PCRE2 (standard POSIX regex doesn't support possessive quantifiers).
 
-### `\s*[\r\n]` — Newlines
+### `\s*[\r\n]`: Newlines
 
 Matches whitespace ending in a newline. This keeps newlines attached
 to preceding whitespace.
 
-### `\s+(?!\S)` and `\s+` — Whitespace
+### `\s+(?!\S)` and `\s+`: Whitespace
 
 The first matches trailing whitespace (whitespace not followed by a
 non-whitespace character). The second matches any remaining whitespace.
@@ -83,14 +83,14 @@ non-whitespace character). The second matches any remaining whitespace.
 
 We need PCRE2 for three features that POSIX regex doesn't support:
 
-1. **`\p{L}` and `\p{N}`** — Unicode property classes. POSIX has
+1. **`\p{L}` and `\p{N}`**. Unicode property classes. POSIX has
    `[:alpha:]` but it's locale-dependent and doesn't reliably cover
    all Unicode.
 
-2. **`++`** — Possessive quantifiers. Without them, the regex engine
+2. **`++`**. Possessive quantifiers. Without them, the regex engine
    may backtrack exponentially on certain inputs.
 
-3. **`(?!...)`** — Negative lookahead. The `\s+(?!\S)` construct
+3. **`(?!...)`**. Negative lookahead. The `\s+(?!\S)` construct
    matches whitespace only when it's not followed by non-whitespace.
 
 PCRE2 is the *only* external dependency in the entire project. It's
@@ -115,14 +115,14 @@ struct Regex {
 ```
 
 This is C's version of encapsulation. Callers can only interact with
-`Regex` through pointers and the public functions — they can't access
+`Regex` through pointers and the public functions; they can't access
 the PCRE2 internals. Benefits:
 
-- **Callers don't need `#include <pcre2.h>`** — they're isolated from
+- **Callers don't need `#include <pcre2.h>`**. They're isolated from
   the dependency.
 - **We can change the implementation** (e.g., switch to a different
   regex library) without breaking any callers.
-- **Compile times are better** — changes to the regex internals don't
+- **Compile times are better**. Changes to the regex internals don't
   trigger recompilation of files that include `regex.h`.
 
 ## PCRE2 Integration
@@ -141,9 +141,9 @@ pcre2_code *code = pcre2_compile(
 ```
 
 The key flags:
-- **`PCRE2_UTF`** — treat the pattern and subjects as UTF-8 (not raw
+- **`PCRE2_UTF`**. Treat the pattern and subjects as UTF-8 (not raw
   bytes). This means `.` matches a Unicode code point, not a single byte.
-- **`PCRE2_UCP`** — use Unicode properties for `\w`, `\d`, `\s` and
+- **`PCRE2_UCP`**. Use Unicode properties for `\w`, `\d`, `\s` and
   (crucially) `\p{L}`, `\p{N}`.
 
 ### JIT Compilation
@@ -153,7 +153,7 @@ pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
 ```
 
 PCRE2 can JIT-compile patterns into native machine code for a 2–10x
-speedup. This is optional — if the platform doesn't support JIT (e.g.,
+speedup. This is optional: if the platform doesn't support JIT (e.g.,
 some embedded systems), PCRE2 silently falls back to the interpreter.
 
 For tiktoken, JIT compilation is worthwhile because we'll match the
@@ -197,7 +197,7 @@ match.
 
 ## Memory: Zero-Copy Match Results
 
-The `RegexMatch` struct stores `(start, len)` pairs — offsets into the
+The `RegexMatch` struct stores `(start, len)` pairs, offsets into the
 original input string:
 
 ```c
@@ -209,7 +209,7 @@ typedef struct {
 
 No strings are copied. The match results are valid as long as the
 original input text is alive. This is the same ownership pattern we
-used for `Bytes` slices in Chapter 2 — non-owning views into existing
+used for `Bytes` slices in Chapter 2, non-owning views into existing
 data.
 
 ## Testing Without PCRE2
@@ -258,7 +258,7 @@ add_test(NAME regex COMMAND test_regex)
 ## What's Next
 
 We can now split text into chunks. In [Chapter 6](chapter06_vocab.md),
-we'll load a real tiktoken vocabulary file — combining base64 decoding
+we'll load a real tiktoken vocabulary file, combining base64 decoding
 (Chapter 1), hash maps (Chapter 3), and the arena allocator (Chapter 3)
 to build the `BpeRanks` structure that the BPE algorithm (Chapter 4)
 needs.
@@ -274,7 +274,7 @@ chapters:
 | `nullptr` | Null checks throughout, returned on failure |
 | `[[nodiscard]]` | On all functions returning allocated resources |
 | `= {}` empty init | Zero-initializing `RegexMatchVec` |
-| Opaque types | `typedef struct Regex Regex` — C's encapsulation |
+| Opaque types | `typedef struct Regex Regex`, C's encapsulation |
 
 The opaque type pattern isn't a C23 feature per se (it works in any C
 version), but it's an important C idiom worth highlighting. C23 doesn't

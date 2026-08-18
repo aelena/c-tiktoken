@@ -1,4 +1,4 @@
-# Chapter 3 — Hash Map and Arena Allocator
+# Chapter 3: Hash Map and Arena Allocator
 
 ## The Storage Problem
 
@@ -22,7 +22,7 @@ slow. We need a hash map.
 Before building the hash map, let's solve a simpler problem: memory
 management for vocabulary data.
 
-When we load a vocabulary file, we create 100K+ `Bytes` values — one for
+When we load a vocabulary file, we create 100K+ `Bytes` values, one for
 each token. If each one calls `malloc` individually, we end up with:
 - 100K+ tiny allocations (fragmentation)
 - 100K+ individual `free` calls on cleanup
@@ -79,7 +79,7 @@ creates a bitmask that zeros out the low bits.
 ### When to Use Arenas
 
 Arenas are ideal when you have a group of allocations that share a
-lifetime — they're all created together and destroyed together. Our
+lifetime: they are all created together and destroyed together. Our
 vocabulary is a perfect example: all token byte data is loaded at
 startup and freed when the encoding is destroyed.
 
@@ -100,7 +100,7 @@ There are many hash map strategies. We use **Robin Hood open addressing**:
   insertion to balance probe lengths. Named after the principle of
   "taking from the rich to give to the poor."
 
-The key metric is **PSL** (Probe Sequence Length) — how far an entry
+The key metric is **PSL** (Probe Sequence Length), how far an entry
 is from its ideal position. Robin Hood hashing minimizes the *variance*
 of PSL across all entries, making worst-case lookups much better than
 standard linear probing.
@@ -156,7 +156,7 @@ bool get(Entry *slots, size_t cap, Key key, Value *out) {
 
 The crucial line is `slots[idx].psl >= psl`. If the entry at position
 `idx` has a shorter PSL than what ours would be, then our key can't be
-further ahead — we would have displaced this entry during insertion.
+further ahead; we would have displaced this entry during insertion.
 This means failed lookups terminate quickly instead of scanning the
 entire cluster.
 
@@ -172,12 +172,12 @@ At 70% load, Robin Hood hashing gives:
 - Average successful probe: ~1.37
 - Average failed probe: ~2.37
 
-These are excellent numbers — almost as good as a perfect hash function.
+These are excellent numbers, almost as good as a perfect hash function.
 At 90% load, probes would increase to ~3.0 and ~10.0, which is why we
 keep the threshold moderate.
 
 Growth means allocating a new array of double the size and re-inserting
-all entries. This is O(n) but happens infrequently — amortized O(1)
+all entries. This is O(n) but happens infrequently: amortized O(1)
 per insertion, the same analysis as dynamic arrays.
 
 ### Power-of-Two Sizing
@@ -197,7 +197,7 @@ cap - 1 = 0b01111111  (127)
 hash & (cap - 1)  →  extracts lower 7 bits  →  range [0, 127]
 ```
 
-## C23 Feature: `<stdbit.h>` — Bit Manipulation Functions
+## C23 Feature: `<stdbit.h>`: Bit Manipulation Functions
 
 C23 adds `<stdbit.h>` with standardized bit manipulation functions.
 The one we'd use here is `stdc_bit_ceil`:
@@ -228,11 +228,11 @@ the value has all bits set from the highest original bit down to bit 0,
 so adding 1 produces the next power of two.
 
 `<stdbit.h>` also provides:
-- `stdc_leading_zeros(x)` — count leading zeros
-- `stdc_trailing_zeros(x)` — count trailing zeros
-- `stdc_popcount(x)` — count set bits
-- `stdc_has_single_bit(x)` — check if x is a power of two
-- `stdc_bit_floor(x)` — round down to previous power of two
+- `stdc_leading_zeros(x)`: count leading zeros
+- `stdc_trailing_zeros(x)`: count trailing zeros
+- `stdc_popcount(x)`: count set bits
+- `stdc_has_single_bit(x)`: check if x is a power of two
+- `stdc_bit_floor(x)`: round down to previous power of two
 
 These replace a patchwork of compiler builtins (`__builtin_clz`,
 `__builtin_popcount`) and platform-specific intrinsics with a single
@@ -248,7 +248,7 @@ static constexpr double MAX_LOAD = 0.70;
 
 Note that C23 `constexpr` supports floating-point constants too (C23
 allows `constexpr` for all scalar types and arrays thereof). This is
-a compile-time constant — the compiler can inline it everywhere and
+a compile-time constant; the compiler can inline it everywhere and
 there's no runtime initialization.
 
 ## Two Concrete Maps Instead of One Generic
@@ -272,7 +272,7 @@ separate concrete types rather than one generic map. Why?
    see `Bytes` keys and `uint32_t` values. A `void *` map shows raw
    memory.
 
-The tradeoff is code duplication — the two maps are structurally
+The tradeoff is code duplication: the two maps are structurally
 identical. In Chapter 4's tutorial commentary we'll discuss how C23's
 `typeof` could be used to macro-generate both from a single template,
 but for teaching purposes, the explicit duplication is clearer.
@@ -292,7 +292,7 @@ typedef struct {
 
 **Cached hash** is critical for performance during table growth. When we
 double the table and re-insert all entries, we need each entry's hash to
-compute its new position. Without caching, we'd re-hash every key — for
+compute its new position. Without caching, we'd re-hash every key, and for
 `Bytes` keys, that means re-scanning every byte of every token.
 
 **PSL as empty marker:** we use `psl == -1` to mark empty slots rather
@@ -322,7 +322,7 @@ We now have the infrastructure to store a vocabulary: an arena for
 bulk byte allocation and hash maps for O(1) lookup in both directions.
 
 In [Chapter 4](chapter04_bpe.md), we'll implement the core BPE
-(Byte Pair Encoding) merge algorithm — the heart of the tokenizer.
+(Byte Pair Encoding) merge algorithm, the heart of the tokenizer.
 Given a byte sequence and a vocabulary of ranked merges, BPE
 repeatedly merges the highest-priority adjacent pair until no more
 merges are possible.

@@ -1,4 +1,4 @@
-# Chapter 6 — Vocabulary Loading
+# Chapter 6: Vocabulary Loading
 
 ## The .tiktoken File Format
 
@@ -14,7 +14,7 @@ JQ== 4
 ...
 ```
 
-The cl100k_base vocabulary (used by GPT-4) has 100,256 entries — about
+The cl100k_base vocabulary (used by GPT-4) has 100,256 entries, about
 1.6 MB of text. Let's decode what these lines mean:
 
 ```
@@ -45,9 +45,9 @@ Each line: "YQ== 0"
     └─▶ Right side: "0"    ──▶  strtoul                     ──▶  rank 0
     │
     ▼  Store
-    ├─▶ arena_push_bytes (Chapter 3)     — copy bytes into arena
-    ├─▶ b2i_insert (Chapter 3)           — bytes → rank map
-    └─▶ i2b_insert (Chapter 3)           — rank → bytes map
+    ├─▶ arena_push_bytes (Chapter 3)     : copy bytes into arena
+    ├─▶ b2i_insert (Chapter 3)           : bytes → rank map
+    └─▶ i2b_insert (Chapter 3)           : rank → bytes map
 ```
 
 ## Pre-Sizing for Performance
@@ -63,7 +63,7 @@ result.ranks.encoder = b2i_new(estimated_entries * 2);    // 200K slots
 result.ranks.decoder = i2b_new(estimated_entries * 2);    // 200K slots
 ```
 
-The `count_lines` scan is O(n) over the file data — trivially fast
+The `count_lines` scan is O(n) over the file data, trivially fast
 compared to the actual loading work. By starting with capacity for
 2× the expected entries, the hash maps won't need to grow at all
 (their load factor stays under 50%, well below the 70% threshold).
@@ -91,7 +91,7 @@ When we parse a line:
 4. Insert this view as a hash map key (B2iMap) or value (I2bMap).
 
 The hash map entries point into the arena but don't own the data.
-When we free everything, we free the arena once — no need to iterate
+When we free everything, we free the arena once; no need to iterate
 100K entries and free each key individually.
 
 ```c
@@ -145,13 +145,13 @@ but `strtoul` + `errno` is the established C idiom and works well here.
 ### Error tolerance
 
 Malformed lines (no space separator, invalid base64, rank overflow) are
-silently skipped. This makes the loader robust against minor format
-variations without crashing:
+silently skipped, so a file with a stray blank line or a trailing newline
+still loads:
 
 ```c
 if (parse_line(cursor, line_len, &result.arena,
                &token_bytes, &rank)) {
-    // success — insert into maps
+    // success: insert into maps
 } else {
     // skip this line
 }
@@ -172,7 +172,7 @@ char *partial = strndup("hello world", 5);  // "hello"
 ```
 
 We don't use them in this chapter (our parsing doesn't need string
-duplication), but they're worth knowing about — they eliminate one
+duplication), but they're worth knowing about: they eliminate one
 of the most common "roll your own" functions in C codebases.
 
 ## Testing With Synthetic Data
@@ -230,7 +230,7 @@ We now have every piece needed for a complete tokenizer:
 - Vocabulary loading (Chapter 6)
 
 In [Chapter 7](chapter07_api.md), we'll combine everything into the
-public `TiktokenEncoding` API — `tiktoken_encode()`, `tiktoken_decode()`,
+public `TiktokenEncoding` API: `tiktoken_encode()`, `tiktoken_decode()`,
 with special token handling and preset encoding constructors.
 
 ## Summary of C23 Features Discussed
