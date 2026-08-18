@@ -71,6 +71,11 @@ static TiktokenEncoding *make_test_encoding(void) {
 
     // One special token.
     SpecialToken *special = malloc(sizeof(SpecialToken));
+    if (special == nullptr) {
+        regex_free(pattern);
+        vocab_free(&vocab);
+        return nullptr;
+    }
     special[0] = (SpecialToken){
         .text     = "<|end|>",
         .text_len = 7,

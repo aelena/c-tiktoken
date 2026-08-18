@@ -31,9 +31,29 @@
 
 // ── Test framework ─────────────────────────────────────────────────────
 
-static int tests_run    = 0;
-static int tests_passed = 0;
-static int tests_failed = 0;
+static int tests_run     = 0;
+static int tests_passed  = 0;
+static int tests_failed  = 0;
+static int tests_skipped = 0;
+
+// ── Skipping honestly ──────────────────────────────────────────────────
+//
+// This suite needs cl100k_base.tiktoken and the Python tiktoken package, and
+// neither ships with the repository. When they are absent the tests cannot run
+// — but they must not be reported as passing, which is what returning
+// EXIT_SUCCESS did. ctest reads this exit code as "skipped" via the
+// SKIP_RETURN_CODE property set in CMakeLists.txt, so the summary distinguishes
+// "verified against the reference implementation" from "did not check".
+//
+// 77 is the GNU Automake convention for a skipped test.
+#define EXIT_SKIP 77
+
+#define SKIP(reason)                                                    \
+    do {                                                               \
+        tests_skipped++;                                               \
+        printf("  %-50s[SKIP] %s\n", "integration: simple text",       \
+               reason);                                                \
+    } while (0)
 
 #define TEST(name)                                          \
     do {                                                    \
@@ -244,7 +264,7 @@ static void test_compare(const char *test_name,
     bool py_ok = call_python_reference(enc->name, text, allow_special, &py_tokens, &py_len);
     
     if (!py_ok) {
-        printf("[SKIP] Python reference unavailable\n");
+        SKIP("Python reference unavailable");
         tokvec_free(&c_tokens);
         return;
     }
@@ -277,7 +297,7 @@ static void test_simple_text(void) {
         f = fopen(vocab_path, "r");
     }
     if (f == nullptr) {
-        printf("  %-50s[SKIP] cl100k_base.tiktoken not found\n", "integration: simple text");
+        SKIP("cl100k_base.tiktoken not found");
         return;
     }
     fclose(f);
@@ -287,14 +307,14 @@ static void test_simple_text(void) {
     
     VocabResult vocab = vocab_load_file(vocab_path);
     if (!vocab.ok) {
-        printf("  %-50s[SKIP] Failed to load vocabulary\n", "integration: simple text");
+        SKIP("Failed to load vocabulary");
         return;
     }
     
     Regex *pattern = regex_compile(tiktoken_pattern_cl100k());
     if (pattern == nullptr) {
         vocab_free(&vocab);
-        printf("  %-50s[SKIP] Failed to compile regex\n", "integration: simple text");
+        SKIP("Failed to compile regex");
         return;
     }
     
@@ -305,7 +325,7 @@ static void test_simple_text(void) {
         if (special_copy == nullptr) {
             regex_free(pattern);
             vocab_free(&vocab);
-            printf("  %-50s[SKIP] Out of memory\n", "integration: simple text");
+            SKIP("Out of memory");
             return;
         }
         memcpy(special_copy, special, n_special * sizeof(SpecialToken));
@@ -315,7 +335,7 @@ static void test_simple_text(void) {
     TiktokenEncoding *enc = tiktoken_new("cl100k_base", vocab, pattern, special_copy, n_special);
     
     if (enc == nullptr) {
-        printf("  %-50s[SKIP] Failed to create encoding\n", "integration: simple text");
+        SKIP("Failed to create encoding");
         return;
     }
     
@@ -342,8 +362,13 @@ int main(void) {
     test_simple_text();
     
     printf("──────────────────────────────────────────────────────────\n");
-    printf("Results: %d passed, %d failed, %d total\n",
-           tests_passed, tests_failed, tests_run);
+    printf("Results: %d passed, %d failed, %d skipped, %d total\n",
+           tests_passed, tests_failed, tests_skipped, tests_run);
     
-    return tests_failed > 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+    if (tests_failed > 0) return EXIT_FAILURE;
+
+    // Nothing actually ran. Saying so is the whole point.
+    if (tests_passed == 0 && tests_skipped > 0) return EXIT_SKIP;
+
+    return EXIT_SUCCESS;
 }
