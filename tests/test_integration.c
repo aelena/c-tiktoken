@@ -48,11 +48,18 @@ static int tests_skipped = 0;
 // 77 is the GNU Automake convention for a skipped test.
 #define EXIT_SKIP 77
 
+// Inside a test, TEST() has already printed the padded label and only the
+// verdict is missing. Before one has started, the label has to come too.
 #define SKIP(reason)                                                    \
     do {                                                               \
         tests_skipped++;                                               \
-        printf("  %-50s[SKIP] %s\n", "integration: simple text",       \
-               reason);                                                \
+        printf("[SKIP] %s\n", reason);                                 \
+    } while (0)
+
+#define SKIP_SETUP(reason)                                              \
+    do {                                                               \
+        tests_skipped++;                                               \
+        printf("  %-50s[SKIP] %s\n", "integration: setup", reason);    \
     } while (0)
 
 #define TEST(name)                                          \
@@ -297,7 +304,7 @@ static void test_simple_text(void) {
         f = fopen(vocab_path, "r");
     }
     if (f == nullptr) {
-        SKIP("cl100k_base.tiktoken not found");
+        SKIP_SETUP("cl100k_base.tiktoken not found");
         return;
     }
     fclose(f);
@@ -307,14 +314,14 @@ static void test_simple_text(void) {
     
     VocabResult vocab = vocab_load_file(vocab_path);
     if (!vocab.ok) {
-        SKIP("Failed to load vocabulary");
+        SKIP_SETUP("Failed to load vocabulary");
         return;
     }
     
     Regex *pattern = regex_compile(tiktoken_pattern_cl100k());
     if (pattern == nullptr) {
         vocab_free(&vocab);
-        SKIP("Failed to compile regex");
+        SKIP_SETUP("Failed to compile regex");
         return;
     }
     
@@ -325,7 +332,7 @@ static void test_simple_text(void) {
         if (special_copy == nullptr) {
             regex_free(pattern);
             vocab_free(&vocab);
-            SKIP("Out of memory");
+            SKIP_SETUP("Out of memory");
             return;
         }
         memcpy(special_copy, special, n_special * sizeof(SpecialToken));
@@ -335,7 +342,7 @@ static void test_simple_text(void) {
     TiktokenEncoding *enc = tiktoken_new("cl100k_base", vocab, pattern, special_copy, n_special);
     
     if (enc == nullptr) {
-        SKIP("Failed to create encoding");
+        SKIP_SETUP("Failed to create encoding");
         return;
     }
     
