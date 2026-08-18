@@ -8,6 +8,10 @@
 // 2. Calling the Python reference script to get expected results
 // 3. Comparing the token IDs
 
+// popen and pclose are POSIX, not ISO C, and this project builds with
+// CMAKE_C_EXTENSIONS OFF. The feature macro has to precede every include.
+#define _POSIX_C_SOURCE 200809L
+
 #include "tiktoken/tiktoken.h"
 #include "tiktoken/vocab.h"
 #include "tiktoken/regex.h"
