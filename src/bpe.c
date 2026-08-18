@@ -81,8 +81,8 @@ TokenVec bpe_encode(const BpeRanks *ranks, const uint8_t *data, size_t len) {
     // Special case: single byte — just look it up.
     if (len == 1) {
         uint32_t rank = get_rank(ranks, data, 0, 1);
-        if (rank != NO_RANK) {
-            tokvec_push(&result, rank);
+        if (rank != NO_RANK && !tokvec_push(&result, rank)) {
+            tokvec_free(&result);
         }
         return result;
     }
@@ -124,7 +124,6 @@ TokenVec bpe_encode(const BpeRanks *ranks, const uint8_t *data, size_t len) {
         uint32_t min_rank = NO_RANK;
         int32_t  min_idx  = -1;
 
-        int32_t idx = 0;  // start at the head of the linked list
         // Walk to find head (it's always index 0 initially, but after
         // merges the first valid part might still be 0).
         // Actually, after merges some parts are "deleted" (skipped via
@@ -179,8 +178,13 @@ TokenVec bpe_encode(const BpeRanks *ranks, const uint8_t *data, size_t len) {
 
     for (int32_t i = 0; i >= 0; i = parts[i].next) {
         uint32_t rank = get_rank(ranks, data, parts[i].start, parts[i].end);
-        if (rank != NO_RANK) {
-            tokvec_push(&result, rank);
+        if (rank != NO_RANK && !tokvec_push(&result, rank)) {
+            // A truncated token list is worse than no list at all: it decodes
+            // into plausible, wrong text and nothing downstream can tell.
+            // Report the allocation failure as an empty result instead.
+            tokvec_free(&result);
+            free(parts);
+            return result;
         }
     }
 
@@ -193,8 +197,10 @@ Bytes bpe_decode(const BpeRanks *ranks, const uint32_t *tokens, size_t n) {
 
     for (size_t i = 0; i < n; i++) {
         Bytes token_bytes = {};
-        if (i2b_get(&ranks->decoder, tokens[i], &token_bytes)) {
-            bytes_append(&result, token_bytes.data, token_bytes.len);
+        if (i2b_get(&ranks->decoder, tokens[i], &token_bytes)
+            && !bytes_append(&result, token_bytes.data, token_bytes.len)) {
+            bytes_free(&result);
+            return result;
         }
     }
 

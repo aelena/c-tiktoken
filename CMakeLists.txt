@@ -80,6 +80,16 @@ add_executable(test_integration tests/test_integration.c)
 target_link_libraries(test_integration PRIVATE tiktoken)
 add_test(NAME integration COMMAND test_integration)
 
+# The integration suite needs cl100k_base.tiktoken and the Python tiktoken
+# package, neither of which ships here. Without this property it exited 0 when
+# it could not run, and ctest reported the one test that checks us against the
+# reference implementation as passing. 77 is the Automake convention for a skip.
+set_tests_properties(integration PROPERTIES SKIP_RETURN_CODE 77)
+
+add_executable(test_roundtrip tests/test_roundtrip.c)
+target_link_libraries(test_roundtrip PRIVATE tiktoken)
+add_test(NAME roundtrip COMMAND test_roundtrip)
+
 # Examples
 add_executable(count_tokens examples/count_tokens.c)
 target_link_libraries(count_tokens PRIVATE tiktoken)

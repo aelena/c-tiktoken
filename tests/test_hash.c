@@ -43,6 +43,21 @@ static int tests_failed = 0;
 #define ASSERT_EQ(a, b)                                     \
     do { if ((a) != (b)) FAIL(#a " != " #b); } while (0)
 
+// ── Fixture precondition ───────────────────────────────────────────────
+//
+// A failed allocation while *building* a fixture is not a test result —
+// it means the test never ran. Distinguish that from an assertion failure
+// and bail out loudly, rather than silently testing an empty structure.
+
+#define MUST(expr)                                                      \
+    do {                                                                \
+        if (!(expr)) {                                                  \
+            fprintf(stderr, "fixture failed: %s (%s:%d)\n",             \
+                    #expr, __FILE__, __LINE__);                         \
+            exit(EXIT_FAILURE);                                         \
+        }                                                               \
+    } while (0)
+
 // ── Arena tests ────────────────────────────────────────────────────────
 
 static void test_arena_basic(void) {
@@ -88,7 +103,7 @@ static void test_arena_grow(void) {
 static void test_arena_reset(void) {
     TEST("arena: reset reuses memory");
     Arena a = arena_new(256);
-    arena_push(&a, 128);
+    MUST(arena_push(&a, 128) != nullptr);
     size_t cap_before = a.cap;
 
     arena_reset(&a);
@@ -136,7 +151,7 @@ static void test_b2i_missing(void) {
     Bytes k1 = bytes_from_str("exists");
     Bytes k2 = bytes_from_str("missing");
 
-    b2i_insert(&m, k1, 1);
+    MUST(b2i_insert(&m, k1, 1));
 
     uint32_t val = 0;
     ASSERT_FALSE(b2i_get(&m, k2, &val));
@@ -152,13 +167,13 @@ static void test_b2i_overwrite(void) {
     B2iMap m = b2i_new(16);
 
     Bytes k = bytes_from_str("key");
-    b2i_insert(&m, k, 100);
-    b2i_insert(&m, k, 200);
+    MUST(b2i_insert(&m, k, 100));
+    MUST(b2i_insert(&m, k, 200));
 
     ASSERT_EQ(b2i_len(&m), 1u);
 
     uint32_t val = 0;
-    b2i_get(&m, k, &val);
+    ASSERT_TRUE(b2i_get(&m, k, &val));
     ASSERT_EQ(val, 200u);
 
     bytes_free(&k);
@@ -230,7 +245,7 @@ static void test_i2b_missing(void) {
     I2bMap m = i2b_new(16);
 
     Bytes v = bytes_from_str("val");
-    i2b_insert(&m, 1, v);
+    MUST(i2b_insert(&m, 1, v));
 
     Bytes out = {};
     ASSERT_FALSE(i2b_get(&m, 999, &out));
