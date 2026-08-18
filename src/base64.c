@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 1: Base64 Decoding (implementation)
+// c-tiktoken, Chapter 1: Base64 Decoding (implementation)
 
 #include "tiktoken/base64.h"
 
 // ── C23 feature: bool is a keyword ─────────────────────────────────────
 //
-// In C23, `bool`, `true`, and `false` are keywords — no need to include
+// In C23, `bool`, `true`, and `false` are keywords, so there is no need to include
 // <stdbool.h>. This is a small but welcome change that brings C in line
 // with C++ and eliminates a common source of confusion for beginners.
 
@@ -15,7 +15,7 @@
 // C23 introduces `nullptr` as the canonical null-pointer constant, with
 // its own type `nullptr_t`. Unlike the traditional `NULL` (which is
 // typically `(void *)0` or just `0`), `nullptr` is unambiguously a
-// pointer — it won't silently convert to an integer. We use it throughout.
+// pointer; it won't silently convert to an integer. We use it throughout.
 
 // ── C23 feature: constexpr ─────────────────────────────────────────────
 //
@@ -36,7 +36,7 @@ constexpr uint8_t B64_INV = 0xFF;
 // Index 0x00–0xFF → 6-bit value or B64_INV.
 //
 // We lay this out as a full 256-entry table so that decoding is a single
-// array lookup per character — no branches, no range checks.
+// array lookup per character, with no branches and no range checks.
 //
 // C23 feature: constexpr on an array.
 // The entire table is a compile-time constant. In C17 you would use
@@ -69,7 +69,7 @@ static constexpr uint8_t DECODE_TABLE[256] = {
     // 0x70–0x7F:  p-z { | } ~ DEL
          41,      42,      43,      44,      45,      46,      47,      48,
          49,      50,      51, B64_INV, B64_INV, B64_INV, B64_INV, B64_INV,
-    // 0x80–0xFF: high bytes — all invalid in base64
+    // 0x80–0xFF: high bytes, all invalid in base64
     B64_INV, B64_INV, B64_INV, B64_INV, B64_INV, B64_INV, B64_INV, B64_INV,
     B64_INV, B64_INV, B64_INV, B64_INV, B64_INV, B64_INV, B64_INV, B64_INV,
     B64_INV, B64_INV, B64_INV, B64_INV, B64_INV, B64_INV, B64_INV, B64_INV,
@@ -93,7 +93,7 @@ static constexpr uint8_t DECODE_TABLE[256] = {
 // C11 required: static_assert(expr, "message");
 // C23 allows:   static_assert(expr);
 //
-// The message was always awkward — what do you say that the expression
+// The message was always awkward: what do you say that the expression
 // doesn't already say? C23 makes it optional.
 
 static_assert(sizeof(DECODE_TABLE) == 256);
@@ -133,7 +133,7 @@ enum b64_status b64_decode(const char    *input,
 
     // Base64 works in groups of 4 characters → 3 bytes.
     // A truncated final group of 2 chars → 1 byte, 3 chars → 2 bytes.
-    // A final group of 1 char is invalid (only 6 bits — less than a byte).
+    // A final group of 1 char is invalid (only 6 bits, less than a byte).
     size_t full_quads  = input_len / 4;
     size_t remainder   = input_len % 4;
 

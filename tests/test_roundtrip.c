@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Round-trip and property tests
+// c-tiktoken, Round-trip and property tests
 //
 // The other suites test units in isolation. This one tests the two invariants
 // that decide whether a tokenizer is correct at all:
@@ -10,7 +10,7 @@
 //
 // Both are checked against a synthetic vocabulary built here at runtime: all
 // 256 single-byte tokens, plus a handful of multi-byte merges to exercise the
-// BPE loop. Byte completeness is the point — it is what makes the round-trip
+// BPE loop. Byte completeness is the point: it is what makes the round-trip
 // total rather than best-effort, and it is the property the real cl100k_base
 // has that the six-token fixtures used elsewhere do not.
 //
@@ -56,7 +56,7 @@ static int tests_failed = 0;
 #define ASSERT_EQ(a, b)                                     \
     do { if ((a) != (b)) FAIL(#a " != " #b); } while (0)
 
-// A failed allocation while building a fixture is not a test result — it means
+// A failed allocation while building a fixture is not a test result. It means
 // the test never ran. Reporting that as a pass is worse than crashing.
 #define MUST(expr)                                                      \
     do {                                                                \
@@ -70,7 +70,7 @@ static int tests_failed = 0;
 // ── Base64, encode direction ──────────────────────────────────────────
 //
 // The library only ships a decoder, because a .tiktoken file is only ever
-// read. Building one needs the other direction, so here it is — deliberately
+// read. Building one needs the other direction, so here it is, deliberately
 // local to the test rather than added to the public API for one caller.
 
 static const char B64_ALPHABET[] =

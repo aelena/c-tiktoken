@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Integration tests: Compare against official tiktoken library
+// c-tiktoken, Integration tests: Compare against official tiktoken library
 //
 // This test suite validates the C implementation against the official
 // Python tiktoken library by:
@@ -40,7 +40,7 @@ static int tests_skipped = 0;
 //
 // This suite needs cl100k_base.tiktoken and the Python tiktoken package, and
 // neither ships with the repository. When they are absent the tests cannot run
-// — but they must not be reported as passing, which is what returning
+// but they must not be reported as passing, which is what returning
 // EXIT_SUCCESS did. ctest reads this exit code as "skipped" via the
 // SKIP_RETURN_CODE property set in CMakeLists.txt, so the summary distinguishes
 // "verified against the reference implementation" from "did not check".

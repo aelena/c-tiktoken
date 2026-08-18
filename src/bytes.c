@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 2: Byte Strings (implementation)
+// c-tiktoken, Chapter 2: Byte Strings (implementation)
 
 #include "tiktoken/bytes.h"
 
@@ -11,7 +11,7 @@
 // ── C23 feature: typeof ────────────────────────────────────────────────
 //
 // C23 promotes `typeof` from a compiler extension to a standard keyword.
-// It evaluates to the type of its operand — without evaluating the
+// It evaluates to the type of its operand, without evaluating the
 // operand itself. This is invaluable for writing type-safe macros.
 //
 // We use it here in a growth helper macro so we don't repeat the
@@ -178,7 +178,7 @@ bool bytes_equal(Bytes a, Bytes b) {
 // unused variables or parameters. Here we document the FNV constants
 // with names but only use their values.
 
-// FNV-1a hash — simple, fast, and well-distributed for short keys.
+// FNV-1a hash: simple, fast and well-distributed for short keys.
 //
 // FNV-1a works by:
 //   1. Starting with an offset basis (a magic constant)

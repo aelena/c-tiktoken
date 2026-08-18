@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 6 tests: Vocabulary Loading
+// c-tiktoken, Chapter 6 tests: Vocabulary Loading
 
 #include "tiktoken/vocab.h"
 #include "tiktoken/bpe.h"
@@ -116,7 +116,7 @@ static void test_bpe_with_loaded_vocab(void) {
     VocabResult v = vocab_load_mem(TINY_VOCAB, strlen(TINY_VOCAB));
     ASSERT_TRUE(v.ok);
 
-    // Encode "abc" — should merge to single token (rank 5).
+    // Encode "abc", which should merge to a single token (rank 5).
     // Merge sequence:
     //   a(0) b(1) c(2)
     //   Pair ranks: ab=3, bc=4

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 2: Byte Strings
+// c-tiktoken, Chapter 2: Byte Strings
 //
 // A length-prefixed dynamic byte buffer. Tokens in tiktoken are arbitrary
-// byte sequences — not null-terminated C strings. This type is the
+// byte sequences, not null-terminated C strings. This type is the
 // fundamental data unit throughout the project.
 
 #ifndef TIKTOKEN_BYTES_H
@@ -95,7 +95,7 @@ typedef struct {
 [[nodiscard]]
 ByteVec bytevec_new(void);
 
-// Append a Bytes (transfers ownership — the vec now owns the data).
+// Append a Bytes (transfers ownership: the vec now owns the data).
 [[nodiscard]]
 bool bytevec_push(ByteVec *v, Bytes b);
 

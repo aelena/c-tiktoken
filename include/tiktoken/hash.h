@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 3: Hash Map
+// c-tiktoken, Chapter 3: Hash Map
 //
 // A Robin Hood open-addressing hash map, implemented with macros for
 // type genericity. We need two concrete maps:

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 3: Hash Map (implementation)
+// c-tiktoken, Chapter 3: Hash Map (implementation)
 //
 // Robin Hood open-addressing hash map with two concrete instantiations:
 //   B2iMap: Bytes → uint32_t  (encode direction)
@@ -45,10 +45,10 @@ static constexpr double MAX_LOAD = 0.70;
 
 // ── Hash functions ─────────────────────────────────────────────────────
 
-// Hash for Bytes keys — reuses the FNV-1a from Chapter 2.
+// Hash for Bytes keys, reusing the FNV-1a from Chapter 2.
 // (We call bytes_hash directly.)
 
-// Hash for uint32_t keys — spread bits with a mix function.
+// Hash for uint32_t keys, spreading bits with a mix function.
 static inline uint64_t hash_u32(uint32_t key) {
     uint64_t h = (uint64_t)key;
     h = (h ^ (h >> 16)) * 0x45d9f3b;
@@ -102,7 +102,7 @@ static void b2i_insert_entry(B2iEntry *slots, size_t cap, B2iEntry entry) {
     //
     // Walk forward from the ideal slot. At each occupied slot, compare
     // PSL (Probe Sequence Length). If the existing entry has a *shorter*
-    // PSL than ours, it's "richer" — swap it out and continue inserting
+    // PSL than ours, it's "richer", so swap it out and continue inserting
     // the displaced entry. This keeps probe lengths balanced.
     //
     // The key insight: Robin Hood hashing reduces the variance of probe
@@ -112,7 +112,7 @@ static void b2i_insert_entry(B2iEntry *slots, size_t cap, B2iEntry entry) {
 
     for (;;) {
         if (slots[idx].psl < 0) {
-            // Empty slot — place the entry here.
+            // Empty slot: place the entry here.
             slots[idx] = entry;
             return;
         }
@@ -170,7 +170,7 @@ bool b2i_insert(B2iMap *m, Bytes key, uint32_t value) {
     }
 
     uint64_t h = bytes_hash(key);
-    // Check for duplicate key — update in place if found.
+    // Check for duplicate key: update in place if found.
     size_t idx = slot_index(h, m->cap);
     for (int32_t psl = 0; m->slots[idx].psl >= 0; psl++) {
         if (m->slots[idx].hash == h && bytes_equal(m->slots[idx].key, key)) {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 2 tests: Byte Strings
+// c-tiktoken, Chapter 2 tests: Byte Strings
 
 #include "tiktoken/bytes.h"
 
@@ -132,7 +132,7 @@ static void test_slice(void) {
     ASSERT_TRUE(bytes_equal(s, expected));
     ASSERT_EQ(s.cap, 0u);  // non-owning
     bytes_free(&expected);
-    // Don't free the slice — it doesn't own memory.
+    // Don't free the slice; it doesn't own memory.
     bytes_free(&b);
     PASS();
 

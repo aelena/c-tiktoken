@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 3 tests: Hash Map and Arena Allocator
+// c-tiktoken, Chapter 3 tests: Hash Map and Arena Allocator
 
 #include "tiktoken/arena.h"
 #include "tiktoken/hash.h"
@@ -45,8 +45,8 @@ static int tests_failed = 0;
 
 // ── Fixture precondition ───────────────────────────────────────────────
 //
-// A failed allocation while *building* a fixture is not a test result —
-// it means the test never ran. Distinguish that from an assertion failure
+// A failed allocation while *building* a fixture is not a test result.
+// It means the test never ran. Distinguish that from an assertion failure
 // and bail out loudly, rather than silently testing an empty structure.
 
 #define MUST(expr)                                                      \

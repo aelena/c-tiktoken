@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 6: Vocabulary Loading (implementation)
+// c-tiktoken, Chapter 6: Vocabulary Loading (implementation)
 
 #include "tiktoken/vocab.h"
 #include "tiktoken/base64.h"
@@ -17,7 +17,7 @@
 // strdup() and strndup() were POSIX extensions that many C programmers
 // used but were technically not part of the C standard. C23 adds them
 // to the standard library (<string.h>). We don't use them directly here,
-// but it's worth noting — one fewer reason to depend on POSIX headers.
+// but it's worth noting: one fewer reason to depend on POSIX headers.
 
 // ── Estimate vocabulary size ──────────────────────────────────────────
 //
@@ -91,7 +91,7 @@ static bool parse_line(const char *line, size_t line_len,
     *out_bytes = (Bytes){
         .data = arena_data,
         .len  = decoded_len,
-        .cap  = 0,   // arena-owned — don't free individually
+        .cap  = 0,   // arena-owned, don't free individually
     };
 
     // ── Parse rank integer ─────────────────────────────────────────
@@ -151,7 +151,7 @@ VocabResult vocab_load_mem(const char *data, size_t data_len) {
                            &token_bytes, &rank)) {
                 // Both directions or neither. A vocabulary missing entries
                 // still loads and then mistokenises every input that touches
-                // the gap, silently and forever — so an insertion failure
+                // the gap, silently and forever, so an insertion failure
                 // has to fail the whole load, not one line of it.
                 if (!b2i_insert(&result.ranks.encoder, token_bytes, rank)
                     || !i2b_insert(&result.ranks.decoder, rank, token_bytes)) {

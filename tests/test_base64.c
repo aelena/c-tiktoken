@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 1 tests: Base64 Decoding
+// c-tiktoken, Chapter 1 tests: Base64 Decoding
 //
 // A minimal test harness using only C23 and the standard library.
-// No external test framework — we build our own from scratch.
+// No external test framework. We build our own from scratch.
 
 #include "tiktoken/base64.h"
 
@@ -14,7 +14,7 @@
 // ── Minimal test framework ─────────────────────────────────────────────
 //
 // We define a few macros that give us readable assertions and automatic
-// pass/fail counting. This is intentionally simple — a real project
+// pass/fail counting. This is intentionally simple; a real project
 // might use a framework, but for a tutorial, seeing how the sausage is
 // made is more valuable.
 
@@ -127,7 +127,7 @@ static void test_rfc4648_vectors(void) {
                  "Zm9vYmFy", (const uint8_t *)"foobar", 6);
 }
 
-// Unpadded input (no '=' suffix) — we accept this leniently.
+// Unpadded input (no '=' suffix), which we accept leniently.
 static void test_unpadded(void) {
     check_decode("unpadded: \"f\"",
                  "Zg", (const uint8_t *)"f", 1);

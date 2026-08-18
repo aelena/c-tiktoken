@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 7 tests: High-Level Encoding API
+// c-tiktoken, Chapter 7 tests: High-Level Encoding API
 //
 // Tests the complete encode/decode pipeline using a synthetic vocabulary.
-// These tests don't need PCRE2 — we use a simple \S+ regex pattern.
+// These tests don't need PCRE2; we use a simple \S+ regex pattern.
 
 #include "tiktoken/encoding.h"
 #include "tiktoken/bytes.h"

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 4 tests: BPE Algorithm
+// c-tiktoken, Chapter 4 tests: BPE Algorithm
 //
 // Tests use a small hand-crafted vocabulary to verify the merge algorithm
 // step by step, without needing a real tiktoken vocabulary file.
@@ -46,8 +46,8 @@ static int tests_failed = 0;
 
 // ── Fixture precondition ───────────────────────────────────────────────
 //
-// A failed allocation while *building* a fixture is not a test result —
-// it means the test never ran. Distinguish that from an assertion failure
+// A failed allocation while *building* a fixture is not a test result.
+// It means the test never ran. Distinguish that from an assertion failure
 // and bail out loudly, rather than silently testing an empty structure.
 
 #define MUST(expr)                                                      \

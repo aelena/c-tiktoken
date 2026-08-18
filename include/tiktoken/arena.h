@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 3: Arena Allocator
+// c-tiktoken, Chapter 3: Arena Allocator
 //
 // A bump allocator for bulk allocation of data that shares a lifetime.
 // Used for vocabulary byte data: all 100K+ token byte sequences are
