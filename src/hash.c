@@ -172,7 +172,11 @@ bool b2i_insert(B2iMap *m, Bytes key, uint32_t value) {
     uint64_t h = bytes_hash(key);
     // Check for duplicate key: update in place if found.
     size_t idx = slot_index(h, m->cap);
-    for (int32_t psl = 0; m->slots[idx].psl >= 0; psl++) {
+    // Scan to the first empty slot looking for an existing key. This does not
+    // take the Robin Hood early exit that b2i_get uses: stopping early is sound
+    // there, but scanning all the way is unconditionally correct here and an
+    // insert already pays for a probe sequence anyway.
+    while (m->slots[idx].psl >= 0) {
         if (m->slots[idx].hash == h && bytes_equal(m->slots[idx].key, key)) {
             m->slots[idx].value = value;
             return true;
@@ -293,13 +297,16 @@ bool i2b_insert(I2bMap *m, uint32_t key, Bytes value) {
 
     uint64_t h = hash_u32(key);
     size_t idx = slot_index(h, m->cap);
-    for (int32_t psl = 0; m->slots[idx].psl >= 0; psl++) {
+    // Scan to the first empty slot looking for an existing key. This does not
+    // take the Robin Hood early exit that b2i_get uses: stopping early is sound
+    // there, but scanning all the way is unconditionally correct here and an
+    // insert already pays for a probe sequence anyway.
+    while (m->slots[idx].psl >= 0) {
         if (m->slots[idx].hash == h && m->slots[idx].key == key) {
             m->slots[idx].value = value;
             return true;
         }
         idx = (idx + 1) & (m->cap - 1);
-        (void)psl;
     }
 
     I2bEntry entry = {

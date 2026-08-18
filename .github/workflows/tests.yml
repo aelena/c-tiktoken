@@ -1,0 +1,127 @@
+name: tests
+
+# The badge in the README used to be hand-drawn. This is what makes it true.
+#
+# Two jobs, because they answer different questions. `build` asks whether the
+# code compiles clean and its own tests agree with it. `reference` asks the only
+# question that really matters for a tokenizer: does it produce the same tokens
+# as OpenAI's implementation? That one needs the real vocabulary and the Python
+# package, so it cannot run as part of the unit suite.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.cc }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Clang 18 and earlier cannot build this: C23 `constexpr` for objects
+        # landed in Clang 19. Worth keeping the floor visible here rather than
+        # only in the README.
+        cc: [gcc-13, gcc-14, clang-19]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain and PCRE2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ${{ matrix.cc }} libpcre2-dev
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=${{ matrix.cc }}
+
+      # The project already asks for -Wall -Wextra -Wpedantic -Wconversion
+      # -Wsign-conversion. A warning that nobody sees is a warning that comes
+      # back, so the log is checked and the job fails on any of them.
+      - name: Build, and fail on any warning
+        run: |
+          set -o pipefail
+          cmake --build build -j"$(nproc)" 2>&1 | tee build.log
+          if grep -q ': warning:' build.log; then
+            echo '::error::build produced warnings'
+            grep ': warning:' build.log
+            exit 1
+          fi
+
+      - name: Unit tests
+        working-directory: build
+        run: ctest --output-on-failure -j"$(nproc)"
+
+      - name: Examples still run
+        working-directory: build
+        run: |
+          ./count_tokens "Hello, world!" || true
+          ./encode_decode || true
+
+  reference:
+    name: vs Python tiktoken
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain and PCRE2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-14 libpcre2-dev
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the reference implementation
+        run: pip install -r requirements.txt
+
+      # 1.6 MB from OpenAI on every run is rude, and the file never changes.
+      - name: Cache the vocabulary
+        id: vocab
+        uses: actions/cache@v4
+        with:
+          path: data/cl100k_base.tiktoken
+          key: cl100k-base-v1
+
+      - name: Download the vocabulary
+        if: steps.vocab.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p data
+          curl -sSfL -o data/cl100k_base.tiktoken \
+            https://openaipublic.blob.core.windows.net/encodings/cl100k_base.tiktoken
+
+      - name: Build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc-14
+          cmake --build build -j"$(nproc)"
+
+      # test_integration exits 77 when it cannot find the vocabulary or the
+      # Python package, and CMake is told to read that as a skip. In this job a
+      # skip means the setup above silently failed, so it is treated as failure.
+      - name: Compare against the reference, and refuse to skip
+        working-directory: build
+        run: |
+          cp -r ../data .
+          set +e
+          ./test_integration | tee integration.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" = "77" ]; then
+            echo '::error::the reference comparison did not run'
+            exit 1
+          fi
+          if grep -q '\[SKIP\]' integration.log; then
+            echo '::error::a case was skipped; this job exists to run all of them'
+            exit 1
+          fi
+          exit "$status"

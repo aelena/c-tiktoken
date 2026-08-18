@@ -1,30 +1,54 @@
 # c-tiktoken
 
-![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+[![tests](https://github.com/aelena/c-tiktoken/actions/workflows/tests.yml/badge.svg)](https://github.com/aelena/c-tiktoken/actions/workflows/tests.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![C Standard](https://img.shields.io/badge/C-C23-orange)
-![Integration Tests](https://img.shields.io/badge/integration%20tests-Python%20tiktoken-yellow)
 
 A C implementation of OpenAI's tiktoken tokenizer, built from scratch as an educational tutorial.
 
 ## Overview
 
-This repository contains a complete, production-ready implementation of the tiktoken tokenizer in C. The project is structured as a step-by-step tutorial that guides you through building a tokenizer from the ground up, covering everything from base64 decoding to the final integration.
+A working implementation of the tiktoken tokenizer in C, and an eight-chapter tutorial that builds it from base64 decoding up to a complete encoder. The tutorial is the point; the library is what it produces.
 
 ## What is tiktoken?
 
-Tiktoken is OpenAI's fast BPE (Byte Pair Encoding) tokenizer used in GPT models. It converts text into sequences of integer tokens that can be processed by language models. This implementation provides the same functionality in pure C, making it suitable for embedded systems, high-performance applications, or as a learning resource.
+Tiktoken is OpenAI's fast BPE (Byte Pair Encoding) tokenizer used in GPT models. It converts text into sequences of integer tokens that can be processed by language models. This implementation does the same job in C, against the same vocabulary files, and is written to be read rather than to win benchmarks.
 
-## Features
+## What it does
 
-- **Complete BPE tokenizer implementation**. Full support for OpenAI's tokenization algorithm
-- **Base64 vocabulary decoding**. Efficient parsing of tiktoken vocabulary files
-- **Regex-based token splitting**. PCRE2-powered pattern matching for token boundaries
-- **Memory-efficient arena allocator**. Custom memory management for performance
-- **Hash map implementation**. Fast token lookup and merging
-- **C23 standard**. Modern C features for cleaner, safer code
-- **Comprehensive test suite**. Unit tests for all components
-- **Example programs**. Ready-to-use tokenization examples
+Encodes and decodes text with OpenAI's `cl100k_base`, or any other `.tiktoken`
+vocabulary, in about 1,800 lines of C23 with one dependency.
+
+- **BPE encode and decode.** Byte-level, so any input round-trips exactly,
+  including invalid UTF-8.
+- **Vocabulary loading** from a file or a memory buffer. Base64 and rank parsing,
+  with malformed lines skipped rather than fatal.
+- **Robin Hood hash maps** in both directions, bytes to rank and rank to bytes.
+  At the 70% load factor the table grows at, that is ~1.37 probes for a hit and
+  ~2.37 for a miss.
+- **Arena allocation** for token bytes, so a 100K-entry vocabulary is one
+  allocation and one `free` rather than 100K of each.
+- **PCRE2 pre-tokenization**, with the cl100k, o200k and p50k patterns supplied.
+- **Special tokens** either emitted as their own id or treated as ordinary text.
+- **Nine test binaries, 94 assertions**, no test framework. Clean under `-Wall
+  -Wextra -Wpedantic -Wconversion -Wsign-conversion`.
+
+### What it is not
+
+Worth saying plainly rather than leaving a reader to find out:
+
+- **Not benchmarked against the Rust implementation.** It is written to be read.
+  The BPE merge loop is the naive O(n²) one, which is fine for the short chunks
+  the regex produces, and Chapter 4 explains what the O(n log n) version would
+  cost you in clarity.
+- **`TIKTOKEN_SPECIAL_DISALLOW` does not disallow anything yet.** It currently
+  behaves as `ALLOW`. The stricter version needs an error channel the API does
+  not have.
+- **No training.** This encodes with a vocabulary someone else trained.
+- **Safe to share, not to build, across threads.** A `TiktokenEncoding` is
+  read-only once constructed.
+- **`data/` ships empty.** The vocabulary is OpenAI's to distribute, not mine;
+  there is a `curl` command below.
 
 ## Project Structure
 
@@ -43,8 +67,10 @@ c-tiktoken/
 ### Prerequisites
 
 - CMake 3.25 or later
-- C23-compatible compiler (GCC 13+, Clang 16+)
-- PCRE2 library (libpcre2-dev on Debian/Ubuntu, pcre2 on macOS/Homebrew)
+- **GCC 13 or newer, or Clang 19 or newer.** Clang 18 and earlier cannot build
+  this: C23 `constexpr` for objects arrived in Clang 19. GCC 13, GCC 14 and
+  Clang 19 are all built and tested in CI.
+- PCRE2 (`libpcre2-dev` on Debian/Ubuntu, `pcre2` on Homebrew)
 
 ### Build Instructions
 
@@ -57,7 +83,7 @@ make
 
 ## Tests
 
-This project includes a comprehensive test suite covering all components of the tokenizer implementation. The tests are organized into two categories: **unit tests** for individual components and **integration tests** that validate against the official Python tiktoken library.
+Two kinds of test: unit tests over synthetic fixtures, and one integration suite that compares this implementation against the official Python `tiktoken` package token for token.
 
 ### Test Suites
 
@@ -97,22 +123,30 @@ The unit tests verify each component in isolation using synthetic test data:
 
 **`test_integration`.** Validates against the official Python tiktoken library.
 
-These tests are the **gold standard** for correctness. They:
+This is the only test that can tell you the implementation is *correct* rather than merely self-consistent. It:
 
 1. Encode text using the C implementation
 2. Call the official Python tiktoken library to get expected results
 3. Compare token IDs byte-for-byte to ensure perfect compatibility
 
-**Test Coverage:**
-- Simple text encoding
-- Empty strings and edge cases
-- Numbers, punctuation, and contractions
-- Unicode characters (e.g., "Hello 世界 🌍")
-- Newlines and whitespace handling
-- Special tokens (`<|endoftext|>`, etc.)
-- Mixed special and ordinary text
+**Cases compared, all ten passing** against the real `cl100k_base` vocabulary
+that GPT-4 uses:
 
-The integration tests use the real `cl100k_base` vocabulary file (used by GPT-4) and ensure that the C implementation produces **identical** tokenization results to OpenAI's official library.
+| | |
+|---|---|
+| `Hello, world!` | the base case |
+| the empty string | the case most implementations get wrong |
+| `hello` | single word, no leading space |
+| `12345` | numbers, which the pattern splits in runs of at most three digits |
+| `Hello, world! How are you?` | punctuation |
+| `I'm don't won't` | contractions, which have their own pattern branch |
+| `Hello 世界 🌍` | two, three and four-byte UTF-8 |
+| `Line 1\nLine 2\r\nLine 3` | both newline conventions, LF and CRLF |
+| `<\|endoftext\|>` | a special token alone |
+| `Hello<\|endoftext\|>world` | a special token between ordinary text |
+
+CI runs these on every push and fails if any of them is skipped, so the badge
+above means "agrees with OpenAI" and not merely "compiles".
 
 ### Running Tests
 
@@ -146,7 +180,7 @@ The integration tests require Python and the official tiktoken library:
    ./test_integration
    ```
 
-The integration test will automatically skip if the Python reference script or vocabulary file is not available, making it safe to run in CI/CD environments where Python might not be installed.
+Without the vocabulary file or the Python package the test exits 77, which CMake is told to read as a skip, so `ctest` reports it as `***Skipped` rather than counting it as a pass. That distinction matters: a green tick from a test that ran no assertions is worse than a red one.
 
 ### Test Philosophy
 
@@ -165,7 +199,7 @@ cd build
 
 ## Tutorial
 
-This repository includes a comprehensive tutorial that walks you through building the tokenizer step by step. Each chapter focuses on a specific component and builds upon the previous ones.
+Eight chapters, each one component, each building on the last. They are the reason this repository exists.
 
 ### Tutorial Chapters
 
@@ -175,7 +209,7 @@ This repository includes a comprehensive tutorial that walks you through buildin
 4. **[Chapter 4: BPE Algorithm](tutorial/chapter04_bpe.md)**. Understand and implement Byte Pair Encoding
 5. **[Chapter 5: Regex](tutorial/chapter05_regex.md)**. Use regex patterns for token splitting
 6. **[Chapter 6: Vocabulary](tutorial/chapter06_vocab.md)**. Load and manage token vocabularies
-7. **[Chapter 7: API Design](tutorial/chapter07_api.md)**. Design a clean, user-friendly API
+7. **[Chapter 7: API Design](tutorial/chapter07_api.md)**. Compose eight modules into one header worth including
 8. **[Chapter 8: Integration](tutorial/chapter08_integration.md)**. Put it all together into a complete tokenizer
 
 **Start with [Chapter 1](tutorial/chapter01_base64.md) to begin the tutorial.**
@@ -218,7 +252,7 @@ int main(void) {
     
     printf("Token count: %zu\n", tokens.len);
     for (size_t i = 0; i < tokens.len; i++) {
-        printf("Token %zu: %u\n", i, tokens.data[i]);
+        printf("Token %zu: %u\n", i, tokens.items[i]);
     }
     
     // Cleanup
