@@ -17,6 +17,19 @@ TITLE = "Build a Tokenizer in C"
 SUBTITLE = "OpenAI's BPE, from base64 to a working cl100k_base encoder"
 AUTHOR = "Antonio Elena"
 
+# The title, encoded by the encoder this book builds. Real cl100k_base output,
+# not decoration: note that "Tokenizer" costs two tokens and "C" costs one.
+# Regenerate with:
+#     python -c "import tiktoken; e=tiktoken.get_encoding('cl100k_base'); #                t=e.encode('Build a Tokenizer in C'); #                print([(e.decode([x]), x) for x in t])"
+TITLE_TOKENS = [
+    ("Build", 11313),
+    (" a", 264),
+    (" Token", 9857),
+    ("izer", 3213),
+    (" in", 304),
+    (" C", 356),
+]
+
 BOOK_DIR = Path(__file__).parent
 REPO_DIR = BOOK_DIR.parent
 TUTORIAL_DIR = REPO_DIR / "tutorial"
@@ -100,6 +113,8 @@ body {
     line-height: 1.1;
     margin: 0 0 10mm 0;
     letter-spacing: -0.5pt;
+    border-bottom: none;
+    padding-bottom: 0;
 }
 .cover .rule {
     border: none;
@@ -112,7 +127,7 @@ body {
     font-size: 11pt;
     color: #555;
     line-height: 1.5;
-    margin: 0 0 55mm 0;
+    margin: 0 0 22mm 0;
 }
 .cover .author {
     font-family: Consolas, 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
@@ -120,6 +135,31 @@ body {
     letter-spacing: 1pt;
     text-transform: uppercase;
     color: #1a1a1a;
+}
+
+.cover .tokens {
+    border-collapse: collapse;
+    width: auto;
+    margin: 0 0 38mm 0;
+    font-family: Consolas, 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
+}
+.cover .tokens td {
+    border: none;
+    padding: 0 3mm;
+    white-space: pre;
+    text-align: center;
+    vertical-align: baseline;
+}
+.cover .tokens__piece td {
+    font-size: 10.5pt;
+    color: #93938e;
+    padding-bottom: 2mm;
+}
+.cover .tokens__id td {
+    font-size: 10.5pt;
+    color: #1a1a1a;
+    border-top: 1px solid #cfcec9;
+    padding-top: 2mm;
 }
 
 .page-break { page-break-after: always; }
@@ -230,6 +270,22 @@ def main() -> None:
         f"<p>{PAGE_BREAK_MARKER}</p>", '<div class="page-break"></div>'
     ).replace(PAGE_BREAK_MARKER, "")
 
+    # tiktoken is not a build dependency, so the ids above cannot be recomputed
+    # here. This is the next best thing: if the title ever changes and the token
+    # list does not, the pieces stop spelling it and the build says so.
+    if "".join(piece for piece, _ in TITLE_TOKENS) != TITLE:
+        sys.exit(
+            "TITLE_TOKENS no longer spells TITLE. Re-encode the title with "
+            "cl100k_base; the command is in the comment above TITLE_TOKENS."
+        )
+
+    piece_cells = "".join(
+        f"<td>{piece}</td>" for piece, _ in TITLE_TOKENS
+    )
+    id_cells = "".join(
+        f"<td>{tok}</td>" for _, tok in TITLE_TOKENS
+    )
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><title>{TITLE}</title></head>
@@ -238,6 +294,10 @@ def main() -> None:
     <h1 class="title">{TITLE}</h1>
     <hr class="rule">
     <p class="subtitle">{SUBTITLE}</p>
+    <table class="tokens">
+      <tr class="tokens__piece">{piece_cells}</tr>
+      <tr class="tokens__id">{id_cells}</tr>
+    </table>
     <p class="author">{AUTHOR}</p>
   </section>
   {html_body}
