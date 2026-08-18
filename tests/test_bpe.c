@@ -44,12 +44,27 @@ static int tests_failed = 0;
 #define ASSERT_EQ(a, b)                                     \
     do { if ((a) != (b)) FAIL(#a " != " #b); } while (0)
 
+// ── Fixture precondition ───────────────────────────────────────────────
+//
+// A failed allocation while *building* a fixture is not a test result —
+// it means the test never ran. Distinguish that from an assertion failure
+// and bail out loudly, rather than silently testing an empty structure.
+
+#define MUST(expr)                                                      \
+    do {                                                                \
+        if (!(expr)) {                                                  \
+            fprintf(stderr, "fixture failed: %s (%s:%d)\n",             \
+                    #expr, __FILE__, __LINE__);                         \
+            exit(EXIT_FAILURE);                                         \
+        }                                                               \
+    } while (0)
+
 // ── Helper: insert a token into the vocabulary ─────────────────────────
 
 static void add_token(BpeRanks *r, const char *token_str, uint32_t rank) {
     Bytes key = bytes_from_str(token_str);
-    b2i_insert(&r->encoder, key, rank);
-    i2b_insert(&r->decoder, rank, key);
+    MUST(b2i_insert(&r->encoder, key, rank));
+    MUST(i2b_insert(&r->decoder, rank, key));
     r->vocab_size++;
     // Note: in tests we leak the Bytes keys. In production, the arena
     // owns this data. Fine for short-lived tests.
@@ -58,8 +73,8 @@ static void add_token(BpeRanks *r, const char *token_str, uint32_t rank) {
 static void add_token_raw(BpeRanks *r, const uint8_t *data, size_t len,
                            uint32_t rank) {
     Bytes key = bytes_from_raw(data, len);
-    b2i_insert(&r->encoder, key, rank);
-    i2b_insert(&r->decoder, rank, key);
+    MUST(b2i_insert(&r->encoder, key, rank));
+    MUST(i2b_insert(&r->decoder, rank, key));
     r->vocab_size++;
 }
 
