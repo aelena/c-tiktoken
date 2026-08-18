@@ -1,4 +1,4 @@
-# Chapter 1 — Base64 Decoding
+# Chapter 1: Base64 Decoding
 
 ## Why Base64?
 
@@ -13,7 +13,7 @@ Iw==  2
 ...
 ```
 
-The left column is a **base64-encoded byte sequence** — the raw bytes that
+The left column is a **base64-encoded byte sequence**, the raw bytes that
 make up a token. The right column is the token's **rank** (its integer ID).
 
 Base64 is the universal way to embed arbitrary binary data in text. Since
@@ -61,7 +61,7 @@ else return INVALID;
 ```
 
 That's 5 branches per character. With a 256-entry lookup table, decoding
-becomes a single array access — branchless and cache-friendly:
+becomes a single array access, branchless and cache-friendly:
 
 ```c
 uint8_t value = DECODE_TABLE[(unsigned char)c];
@@ -78,7 +78,7 @@ In C17, you'd declare the table as:
 static const uint8_t DECODE_TABLE[256] = { ... };
 ```
 
-`const` means "I won't modify this" — but it doesn't guarantee the compiler
+`const` means "I won't modify this", but it doesn't guarantee the compiler
 evaluates it at compile time. In practice, `static const` arrays *are*
 placed in read-only data sections, but the language doesn't require it.
 
@@ -128,7 +128,7 @@ static_assert(sizeof(DECODE_TABLE) == 256);
 ```
 
 We use this to verify our table has exactly 256 entries. If someone
-accidentally adds or removes a line, the build fails immediately — not at
+accidentally adds or removes a line, the build fails immediately, not at
 runtime.
 
 ## C23 Feature: Fixed-Width Enums
@@ -145,10 +145,10 @@ enum b64_status : int {
 ```
 
 The `: int` suffix fixes the underlying type. Benefits:
-- **ABI stability** — the size and signedness are part of the declaration,
+- **ABI stability**. The size and signedness are part of the declaration,
   not up to the compiler.
-- **Self-documenting** — readers know the enum fits in an `int`.
-- **Interop** — when passing enums across library boundaries or storing
+- **Self-documenting**. Readers know the enum fits in an `int`.
+- **Interop**. When passing enums across library boundaries or storing
   them in structures, the size is guaranteed.
 
 ## C23 Feature: `[[nodiscard]]`
@@ -163,7 +163,7 @@ enum b64_status b64_decode(const char *input, size_t input_len,
 ```
 
 Calling `b64_decode(...)` without checking the return value will now
-trigger a warning. This is exactly right for error codes — ignoring a
+trigger a warning. This is exactly right for error codes: ignoring a
 decode failure is almost certainly a bug.
 
 In C17 you could achieve something similar with compiler-specific
@@ -180,7 +180,7 @@ bool ok = true;
 
 In C23:
 ```c
-// No include needed — bool, true, false are keywords.
+// No include needed: bool, true and false are keywords.
 bool ok = true;
 ```
 
@@ -201,8 +201,8 @@ C23 introduces `nullptr`, which has type `nullptr_t` and converts *only*
 to pointer types:
 
 ```c
-int x = nullptr;   // Compiler error — nullptr is not an integer.
-int *p = nullptr;   // OK — nullptr converts to any pointer type.
+int x = nullptr;   // Compiler error: nullptr is not an integer.
+int *p = nullptr;   // OK: nullptr converts to any pointer type.
 ```
 
 Throughout our codebase, we use `nullptr` instead of `NULL` for null
@@ -224,7 +224,7 @@ size_t full_quads = input_len / 4;   // complete 4-char groups
 size_t remainder  = input_len % 4;   // 0, 2, or 3 trailing chars
 ```
 
-A remainder of 1 is invalid (6 bits < 8 bits — can't produce a byte).
+A remainder of 1 is invalid (6 bits < 8 bits, so it cannot produce a byte).
 
 ### Step 3: Decode full groups
 
@@ -262,7 +262,7 @@ The caller allocates the output buffer and passes its size implicitly via
 - **No hidden allocations.** The function doesn't call `malloc`, so there's
   no memory ownership ambiguity.
 - **The caller controls the allocator.** In later chapters we'll use an
-  arena allocator — this function doesn't need to know about that.
+  arena allocator; this function doesn't need to know about that.
 - **Composable.** You can decode into a stack buffer, a heap buffer, or
   a subregion of a larger allocation.
 
@@ -276,13 +276,13 @@ exact size comes back through the `*output_len` out-parameter.
 
 Our test file `tests/test_base64.c` includes:
 
-1. **RFC 4648 vectors** — the standard test cases for base64.
-2. **Unpadded input** — since we strip padding, "Zg" should decode the
+1. **RFC 4648 vectors**. The standard test cases for base64.
+2. **Unpadded input**. Since we strip padding, "Zg" should decode the
    same as "Zg==".
-3. **Binary data** — non-ASCII bytes like `0xDEADBEEF` to verify we
+3. **Binary data**. Non-ASCII bytes like `0xDEADBEEF` to verify we
    handle the full byte range.
-4. **Error cases** — invalid characters, invalid lengths, null pointers.
-5. **Tiktoken-like data** — strings representative of real vocabulary
+4. **Error cases**. Invalid characters, invalid lengths, null pointers.
+5. **Tiktoken-like data**. Strings representative of real vocabulary
    entries, including multi-byte UTF-8.
 
 ## Building and Running
@@ -301,11 +301,11 @@ ctest --test-dir build --output-on-failure
 ## What's Next
 
 With base64 decoding in hand, we can extract raw bytes from tiktoken's
-vocabulary files. But those bytes need a home — we need a data type that
+vocabulary files. But those bytes need a home. We need a data type that
 represents "an arbitrary sequence of bytes with a known length." That's
 not a C string (which is null-terminated and can't contain `\0` bytes).
 
-In [Chapter 2](chapter02_bytestrings.md), we'll build `Bytes` — a
+In [Chapter 2](chapter02_bytestrings.md), we'll build `Bytes`, a
 length-prefixed dynamic byte buffer that will be the fundamental data
 type throughout the rest of the project.
 

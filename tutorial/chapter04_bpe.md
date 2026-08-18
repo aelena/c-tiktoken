@@ -1,4 +1,4 @@
-# Chapter 4 — The BPE Algorithm
+# Chapter 4: The BPE Algorithm
 
 ## What Is Byte Pair Encoding?
 
@@ -37,7 +37,7 @@ priority) wins.
 
 ```
 Pairs:  he(300)  el(none)  ll(301)  lo(302)
-Best:   he(300) — lowest rank
+Best:   he(300), lowest rank
 ```
 
 ### Step 3: Apply the merge
@@ -70,7 +70,7 @@ Each remaining part maps to a token ID (its rank in the vocabulary):
 
 ## Data Structure: The Indexed Linked List
 
-The naive approach — rebuild an array after each merge — is O(n) per
+The naive approach (rebuild an array after each merge) is O(n) per
 merge and O(n²) total. We use an **indexed linked list** instead:
 
 ```c
@@ -84,7 +84,7 @@ typedef struct {
 
 Each part is a byte range `[start, end)` in the original input. Merging
 part `i` with part `next(i)` just extends `i`'s byte range and removes
-`next(i)` from the list — O(1) per merge.
+`next(i)` from the list, O(1) per merge.
 
 The tradeoff: finding the minimum-rank pair is still O(n) per iteration
 (a linear scan), making the overall algorithm O(n²). For tiktoken's
@@ -123,7 +123,7 @@ static uint32_t get_rank(const BpeRanks *ranks,
     Bytes key = {
         .data = (uint8_t *)(data + start),
         .len  = end - start,
-        .cap  = 0,   // non-owning view — no allocation!
+        .cap  = 0,   // non-owning view, no allocation
     };
     uint32_t rank = 0;
     if (b2i_get(&ranks->encoder, key, &rank)) {
@@ -150,7 +150,7 @@ Key design choices:
 
 ## Decoding: The Easy Direction
 
-Decoding is trivial — just concatenate the byte sequence for each token:
+Decoding is trivial. Just concatenate the byte sequence for each token:
 
 ```c
 Bytes bpe_decode(const BpeRanks *ranks, const uint32_t *tokens, size_t n) {
@@ -165,7 +165,7 @@ Bytes bpe_decode(const BpeRanks *ranks, const uint32_t *tokens, size_t n) {
 }
 ```
 
-No merge algorithm needed — the vocabulary maps each rank directly to
+No merge algorithm needed: the vocabulary maps each rank directly to
 its byte sequence. The `i2b_get` returns a non-owning view into the
 hash map's stored data, and `bytes_append` copies those bytes into
 the result.
@@ -184,11 +184,11 @@ This is more limited than C++ `auto`:
 - Cannot be used for function parameters or return types
 - The type must be unambiguously deducible
 
-We use it sparingly — explicit types are usually clearer in C. It's
+We use it sparingly; explicit types are usually clearer in C. It's
 most useful for long type names like iterators (if we had them) or
 when the type is obvious from the right-hand side.
 
-## C23 Feature: `<stdckdint.h>` — Checked Integer Arithmetic
+## C23 Feature: `<stdckdint.h>`: Checked Integer Arithmetic
 
 C23 adds `<stdckdint.h>` for overflow-safe arithmetic:
 
@@ -209,13 +209,13 @@ and return `true` if overflow occurred. This replaces fragile manual
 checks like:
 
 ```c
-// C17 overflow check — easy to get wrong
+// C17 overflow check, easy to get wrong
 if (a > SIZE_MAX - b) { /* overflow */ }
 ```
 
 In our BPE code, we could use `ckd_add` when computing buffer sizes.
 For the tutorial, we note it as a best practice but don't add it to
-every arithmetic operation — that would obscure the algorithm.
+every arithmetic operation; that would obscure the algorithm.
 
 ## Performance Analysis
 
@@ -280,7 +280,7 @@ add_test(NAME bpe COMMAND test_bpe)
 
 ## What's Next
 
-The BPE algorithm operates on individual byte sequences — but tiktoken
+The BPE algorithm operates on individual byte sequences, but tiktoken
 doesn't feed the entire input text to BPE at once. First, it splits the
 text into chunks using a regex pattern. Each chunk is then independently
 encoded with BPE.

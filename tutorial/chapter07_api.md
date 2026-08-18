@@ -1,10 +1,10 @@
-# Chapter 7 — The Encoding API
+# Chapter 7: The Encoding API
 
 ## Putting It All Together
 
 We've built every piece of the tokenizer in isolation. Now we combine
 them into a single, coherent API. This chapter is about **integration
-design** — how individual modules compose into a system.
+design**: how individual modules compose into a system.
 
 ## The Encoding Pipeline
 
@@ -56,7 +56,7 @@ static TokenVec encode_segment(const TiktokenEncoding *enc,
 
 This is clean and simple because each module has a well-defined
 interface. The encoding function doesn't know about hash maps, arenas,
-or base64 — it only knows about regex matches and BPE encoding.
+or base64; it only knows about regex matches and BPE encoding.
 
 ## Special Token Handling
 
@@ -96,7 +96,7 @@ while (cursor < text_len) {
                                         cursor, &special_pos);
 
     if (special_idx < 0) {
-        // No more special tokens — encode the rest normally.
+        // No more special tokens; encode the rest normally.
         encode_segment(enc, text + cursor, text_len - cursor);
         break;
     }
@@ -136,7 +136,7 @@ Bytes tiktoken_decode(const TiktokenEncoding *enc,
 ```
 
 Note that decoding always succeeds (assuming valid token IDs). The
-output is raw bytes — not necessarily valid UTF-8. A full
+output is raw bytes, not necessarily valid UTF-8. A full
 implementation would optionally validate UTF-8 and handle errors.
 
 ## The `TiktokenEncoding` Structure
@@ -170,7 +170,7 @@ tokvec_free(&tokens);
 ```
 
 The caller allocates nothing upfront and frees the result when done.
-This is the simplest ownership model — no ambiguity about who frees
+This is the simplest ownership model: no ambiguity about who frees
 what.
 
 ### 2. `[[nodiscard]]` everywhere
@@ -181,13 +181,13 @@ preventing memory leaks.
 
 ### 3. Null-safe
 
-All public functions handle `nullptr` gracefully — they return empty
-results rather than crashing. This makes the API robust against
-programmer error.
+All public functions handle `nullptr` gracefully; they return empty
+results rather than crashing, so a missing null check in calling code costs
+you an empty result instead of a core dump.
 
 ### 4. `size_t` length parameters
 
-Text length is always explicit — no `strlen` inside the library.
+Text length is always explicit: no `strlen` inside the library.
 This lets callers pass substrings, pre-computed lengths, or text
 with embedded nulls.
 
@@ -264,6 +264,6 @@ the C23 features we've used throughout the project.
 | `nullptr` | Null checks in all public functions |
 | `= {}` | Zero-initializing empty results |
 
-This chapter introduces no new C23 features — it's about composition.
+This chapter introduces no new C23 features; it's about composition.
 The value is in seeing how the features from Chapters 1–6 work together
 in a cohesive API.

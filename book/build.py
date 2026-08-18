@@ -84,7 +84,7 @@ body {
     hyphens: auto;
 }
 
-/* Cover: the aelena.com register — cream ground, near-black ink, one rule. */
+/* Cover: the aelena.com register: cream ground, near-black ink, one rule. */
 .cover {
     page-break-after: always;
     height: 297mm;
@@ -247,7 +247,7 @@ def main() -> None:
     print("Rendering...")
     HTML(string=html).write_pdf(OUTPUT, stylesheets=[WeasyCSS(string=CSS)])
     size_kb = OUTPUT.stat().st_size / 1024
-    print(f"  {OUTPUT.name} — {size_kb:.0f} KB")
+    print(f"  {OUTPUT.name}, {size_kb:.0f} KB")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Example: Count Tokens
+// c-tiktoken, Example: Count Tokens
 //
 // Usage:
 //     ./count_tokens <vocab_file> "text to tokenize"

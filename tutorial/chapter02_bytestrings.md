@@ -1,8 +1,8 @@
-# Chapter 2 — Byte Strings
+# Chapter 2: Byte Strings
 
 ## The Problem With C Strings
 
-C's native string representation — a null-terminated `char *` — has served
+C's native string representation, a null-terminated `char *`, has served
 well for decades, but it's fundamentally unsuitable for a tokenizer:
 
 1. **No embedded nulls.** The byte `0x00` is a valid byte in many
@@ -16,7 +16,7 @@ well for decades, but it's fundamentally unsuitable for a tokenizer:
    and hoping you remembered how much space you had.
 
 4. **Signedness ambiguity.** `char` can be signed or unsigned depending on
-   the platform. Byte data should be `uint8_t` — unambiguously an unsigned
+   the platform. Byte data should be `uint8_t`, unambiguously an unsigned
    8-bit value.
 
 We need a better type. Let's build one.
@@ -31,7 +31,7 @@ typedef struct {
 } Bytes;
 ```
 
-This is sometimes called a "fat pointer" — it's a pointer plus metadata.
+This is sometimes called a "fat pointer": a pointer plus metadata.
 The three fields give us:
 
 - **`data`**: the raw byte buffer
@@ -54,7 +54,7 @@ Bytes b = {NULL};    // More explicit, but only initializes first member
 
 Both of these technically only initialize the *first* member; remaining
 members are implicitly zero-initialized by the language rules. This works,
-but the intent is unclear — are you deliberately setting `data = 0` (an
+but the intent is unclear: are you deliberately setting `data = 0` (an
 integer), or are you trying to zero the whole struct?
 
 C23 introduces the empty initializer:
@@ -107,8 +107,8 @@ C23 also adds `typeof_unqual`, which strips qualifiers like `const` and
 
 ```c
 const int x = 42;
-typeof(x)        y = 10;   // y is const int — can't modify it
-typeof_unqual(x) z = 10;   // z is int — mutable
+typeof(x)        y = 10;   // y is const int, so you can't modify it
+typeof_unqual(x) z = 10;   // z is plain int, mutable
 ```
 
 We'll use both extensively in Chapter 3 (type-generic hash map macros).
@@ -131,7 +131,7 @@ static constexpr uint64_t FNV_OFFSET_BASIS = 0xcbf29ce484222325ULL;
 ```
 
 This tells the compiler: "I know this might not be used in every
-configuration — that's intentional, not a bug." We use it on constants
+configuration; that's intentional, not a bug." We use it on constants
 that are referenced in one function but that we want to keep visible
 and documented at file scope.
 
@@ -149,7 +149,7 @@ static inline size_t grow_cap(size_t current, size_t needed) {
 }
 ```
 
-This is the **doubling strategy** — when you run out of space, double the
+This is the **doubling strategy**: when you run out of space, double the
 capacity. The math works out nicely:
 
 - After `n` appends, you've done at most `log₂(n)` reallocations.
@@ -168,7 +168,7 @@ memory. Our convention:
 
 | `cap` value | Meaning | Must free? |
 |-------------|---------|------------|
-| `cap > 0` | Owning — this `Bytes` allocated the buffer | Yes |
+| `cap > 0` | Owning: this `Bytes` allocated the buffer | Yes |
 | `cap == 0` | Non-owning view (slice) | No |
 
 The `bytes_slice` function creates a view:
@@ -219,23 +219,23 @@ uint64_t bytes_hash(Bytes b) {
 ```
 
 FNV-1a has these properties:
-- **Simple** — the entire algorithm is two operations per byte.
-- **Fast** — no complex math, just XOR and multiply.
-- **Well-distributed** — good avalanche behavior for typical inputs.
-- **Deterministic** — same input always produces same output.
+- **Simple**. The entire algorithm is two operations per byte.
+- **Fast**. No complex math, just XOR and multiply.
+- **Well-distributed**. Good avalanche behavior for typical inputs.
+- **Deterministic**. Same input always produces same output.
 
 It's not cryptographic (don't use it for security), but it's excellent for
 hash tables.
 
 **Why XOR-then-multiply (1a) instead of multiply-then-XOR (1)?** The 1a
-variant has better avalanche properties — changing one input bit affects
+variant has better avalanche properties: changing one input bit affects
 more output bits. The improvement is small but free.
 
 ## The Dynamic Array Types
 
 We define two more dynamic arrays besides `Bytes`:
 
-### `ByteVec` — a vector of `Bytes` values
+### `ByteVec`: a vector of `Bytes` values
 
 ```c
 typedef struct {
@@ -248,7 +248,7 @@ typedef struct {
 Used for: collecting regex match results, storing BPE parts during the
 merge algorithm, building lists of tokens as byte sequences.
 
-### `TokenVec` — a vector of `uint32_t` token IDs
+### `TokenVec`: a vector of `uint32_t` token IDs
 
 ```c
 typedef struct {
@@ -270,11 +270,11 @@ You might wonder why we have three nearly identical dynamic arrays
 (`Bytes`, `ByteVec`, `TokenVec`) instead of one generic container. In C++,
 you'd use `std::vector<T>`. In C, the options are:
 
-1. **`void *` arrays** — type-unsafe, require casts everywhere, lose
+1. **`void *` arrays.** Type-unsafe, require casts everywhere, lose
    size information.
-2. **Macro-generated types** — works (and we'll use this for hash maps in
+2. **Macro-generated types**. Works (and we'll use this for hash maps in
    Chapter 3), but adds complexity.
-3. **Separate concrete types** — a bit repetitive, but simple, type-safe,
+3. **Separate concrete types**. A bit repetitive, but simple, type-safe,
    and easy to debug.
 
 For a tutorial, clarity wins over DRY (Don't Repeat Yourself). Three
@@ -304,7 +304,7 @@ We now have two foundational types:
 - A base64 decoder that turns vocabulary data into raw bytes
 - A `Bytes` type that holds those bytes safely
 
-The next piece is **storage** — we need a way to look up tokens by their
+The next piece is **storage**: we need a way to look up tokens by their
 byte content (for encoding) and by their rank (for decoding). That means
 we need a hash map.
 

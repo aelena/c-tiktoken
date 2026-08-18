@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 3: Arena Allocator (implementation)
+// c-tiktoken, Chapter 3: Arena Allocator (implementation)
 
 #include "tiktoken/arena.h"
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Example: Encode and Decode Round-Trip
+// c-tiktoken, Example: Encode and Decode Round-Trip
 //
 // Demonstrates encoding text into tokens, then decoding back to text.
 //

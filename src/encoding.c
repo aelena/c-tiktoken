@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 7: High-Level Encoding API (implementation)
+// c-tiktoken, Chapter 7: High-Level Encoding API (implementation)
 
 #include "tiktoken/encoding.h"
 
@@ -148,7 +148,7 @@ TokenVec tiktoken_encode(const TiktokenEncoding *enc,
                                             cursor, &special_pos);
 
         if (special_idx < 0) {
-            // No more special tokens — encode the rest as ordinary.
+            // No more special tokens; encode the rest as ordinary.
             TokenVec seg = encode_segment(enc, text + cursor,
                                           text_len - cursor);
             bool ok = tokvec_extend(&result, seg.items, seg.len);
@@ -161,7 +161,7 @@ TokenVec tiktoken_encode(const TiktokenEncoding *enc,
         }
 
         if (mode == TIKTOKEN_SPECIAL_DISALLOW) {
-            // Special token found but disallowed — for now, we treat
+            // Special token found but disallowed; for now, we treat
             // DISALLOW the same as ALLOW. A stricter implementation
             // would return an error here.
         }

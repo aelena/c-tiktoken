@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 7: High-Level Encoding API
+// c-tiktoken, Chapter 7: High-Level Encoding API
 //
 // The top-level API that combines regex splitting, BPE encoding, special
 // token handling, and decoding into a unified interface.

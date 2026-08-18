@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 5: Regex Pre-tokenization (implementation)
+// c-tiktoken, Chapter 5: Regex Pre-tokenization (implementation)
 //
 // Wraps PCRE2 for Unicode-aware regex matching.
 
@@ -37,11 +37,11 @@ Regex *regex_compile(const char *pattern) {
 
     // ── PCRE2 compilation flags ────────────────────────────────────
     //
-    // PCRE2_UTF      — interpret the pattern and subjects as UTF-8.
-    // PCRE2_UCP      — use Unicode properties for \w, \d, \s, and
+    // PCRE2_UTF:      interpret the pattern and subjects as UTF-8.
+    // PCRE2_UCP:      use Unicode properties for \w, \d, \s, and
     //                   crucially for \p{L} (Unicode letters) and
     //                   \p{N} (Unicode numbers).
-    // PCRE2_CASELESS — the (?i:...) group in the pattern enables
+    // PCRE2_CASELESS: the (?i:...) group in the pattern enables
     //                   case-insensitive matching for contractions,
     //                   but we set it at the group level in the
     //                   pattern itself, not globally here.
@@ -61,7 +61,7 @@ Regex *regex_compile(const char *pattern) {
         return nullptr;
     }
 
-    // JIT-compile for speed. This is optional — if JIT isn't available,
+    // JIT-compile for speed. This is optional: if JIT isn't available,
     // PCRE2 falls back to the interpreter.
     pcre2_jit_compile(code, PCRE2_JIT_COMPLETE);
 
@@ -184,13 +184,13 @@ RegexMatchVec regex_find_all(const Regex *re,
 // a specific category of text chunk:
 //
 // For cl100k_base (GPT-4):
-//   (?i:'s|'t|'re|'ve|'m|'ll|'d)  — English contractions
-//   [^\r\n\p{L}\p{N}]?\p{L}+      — optional non-letter/digit + letters
-//   \p{N}{1,3}                      — 1–3 digit numbers
-//    ?[^\s\p{L}\p{N}]++[\r\n]*     — punctuation with trailing newlines
-//   \s*[\r\n]                       — whitespace ending in newline
-//   \s+(?!\S)                       — trailing whitespace (not before non-ws)
-//   \s+                             — remaining whitespace
+//   (?i:'s|'t|'re|'ve|'m|'ll|'d)  : English contractions
+//   [^\r\n\p{L}\p{N}]?\p{L}+      : optional non-letter/digit + letters
+//   \p{N}{1,3}                      : 1–3 digit numbers
+//    ?[^\s\p{L}\p{N}]++[\r\n]*     : punctuation with trailing newlines
+//   \s*[\r\n]                       : whitespace ending in newline
+//   \s+(?!\S)                       : trailing whitespace (not before non-ws)
+//   \s+                             : remaining whitespace
 
 const char *tiktoken_pattern_cl100k(void) {
     return

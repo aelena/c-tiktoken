@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 5 tests: Regex Pre-tokenization
+// c-tiktoken, Chapter 5 tests: Regex Pre-tokenization
 
 #include "tiktoken/regex.h"
 

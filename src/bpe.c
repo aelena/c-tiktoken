@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 4: BPE Algorithm (implementation)
+// c-tiktoken, Chapter 4: BPE Algorithm (implementation)
 //
 // The merge loop that is the heart of all BPE tokenizers.
 
@@ -26,7 +26,7 @@ static constexpr uint32_t NO_RANK = UINT32_MAX;
 
 // ── Merge list ─────────────────────────────────────────────────────────
 //
-// During BPE, we maintain the input as a list of "parts" — byte ranges
+// During BPE, we maintain the input as a list of "parts", byte ranges
 // that may be merged with their neighbors. We use an indexed linked list:
 // each part knows the index of the next part (-1 = end). This lets us
 // remove parts in O(1) without shifting an array.
@@ -78,7 +78,7 @@ TokenVec bpe_encode(const BpeRanks *ranks, const uint8_t *data, size_t len) {
         return result;
     }
 
-    // Special case: single byte — just look it up.
+    // Special case: single byte, so just look it up.
     if (len == 1) {
         uint32_t rank = get_rank(ranks, data, 0, 1);
         if (rank != NO_RANK && !tokvec_push(&result, rank)) {
@@ -163,7 +163,7 @@ TokenVec bpe_encode(const BpeRanks *ranks, const uint8_t *data, size_t len) {
         // Find the previous part (if any) and recompute its rank too,
         // because its next neighbor has changed (it's now merged).
         // We need to walk from the head to find the predecessor.
-        // This is O(n) per merge — acceptable for small inputs.
+        // This is O(n) per merge, acceptable for small inputs.
         for (int32_t i = 0; i >= 0; i = parts[i].next) {
             if (parts[i].next == min_idx) {
                 parts[i].rank = compute_pair_rank(ranks, data, parts, i);

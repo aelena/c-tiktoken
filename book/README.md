@@ -2,7 +2,7 @@
 
 Builds the eight tutorial chapters into a single typeset PDF, *Build a Tokenizer in C*.
 
-The chapters in [`../tutorial/`](../tutorial/) are the single source of truth. This directory adds front matter, a colophon and a stylesheet, and nothing else — so the book and the repository cannot drift apart.
+The chapters in [`../tutorial/`](../tutorial/) are the single source of truth. This directory adds front matter, a colophon and a stylesheet, and nothing else, so the book and the repository cannot drift apart.
 
 ## Build
 
@@ -11,7 +11,7 @@ pip install -r requirements.txt
 python build.py
 ```
 
-Output: `Build-a-Tokenizer-in-C.pdf` — around 54 pages.
+Output: `Build-a-Tokenizer-in-C.pdf`, around 54 pages.
 
 WeasyPrint needs system libraries beyond the Python packages (pango, cairo, gdk-pixbuf). On Debian/Ubuntu:
 
@@ -38,4 +38,4 @@ Chapters are picked up automatically from `../tutorial/chapter*.md` in filename 
 
 ## Why the PDF is not committed
 
-The tutorial is free and stays free — it is the reason anyone finds this repository. The PDF is the typeset convenience version, sold at [aelena74.gumroad.com](https://aelena74.gumroad.com), and building it yourself from these sources is both possible and permitted. If you would rather spend five minutes than the price of a coffee, the instructions above are complete and not deliberately hobbled.
+The tutorial is free and stays free; it is the reason anyone finds this repository. The PDF is the typeset convenience version, sold at [aelena74.gumroad.com](https://aelena74.gumroad.com), and building it yourself from these sources is both possible and permitted. If you would rather spend five minutes than the price of a coffee, the instructions above are complete and not deliberately hobbled.

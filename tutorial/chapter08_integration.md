@@ -1,9 +1,9 @@
-# Chapter 8 — Putting It All Together
+# Chapter 8: Putting It All Together
 
 ## What We Built
 
 Over seven chapters, we constructed a complete BPE tokenizer in modern
-C23 — compatible with OpenAI's tiktoken format:
+C23, compatible with OpenAI's tiktoken format:
 
 | Chapter | Module | Lines of C | What It Does |
 |---------|--------|-----------|--------------|
@@ -210,36 +210,36 @@ dependencies, no forward declarations across modules.
 
 ### What We Did Well
 
-1. **Arena allocation** — one free for 100K+ token entries. No
+1. **Arena allocation**. One free for 100K+ token entries. No
    individual malloc/free tracking needed for vocabulary data.
 
-2. **Non-owning views** — the `cap == 0` convention lets us pass byte
+2. **Non-owning views**. The `cap == 0` convention lets us pass byte
    sequences to hash map lookups without copying.
 
-3. **Opaque PCRE2 wrapper** — callers never include `pcre2.h`.
+3. **Opaque PCRE2 wrapper**. Callers never include `pcre2.h`.
    The dependency is fully encapsulated.
 
-4. **Layered architecture** — each module is testable in isolation.
+4. **Layered architecture**. Each module is testable in isolation.
    The test for Chapter 4 (BPE) doesn't need PCRE2 or file I/O.
 
 ### What We Could Improve
 
-1. **The BPE loop is O(n²)** — fine for regex-split chunks (< 20
+1. **The BPE loop is O(n²)**. Fine for regex-split chunks (< 20
    bytes) but slow for long inputs. A priority queue would make it
    O(n log n).
 
-2. **No error reporting** — functions return `nullptr` or empty
+2. **No error reporting**. Functions return `nullptr` or empty
    results on failure, with no error message or code. A production
    library would use a result type with error details.
 
-3. **Hash map duplication** — `B2iMap` and `I2bMap` are nearly
+3. **Hash map duplication.** `B2iMap` and `I2bMap` are nearly
    identical. C23's `typeof` could generate both from a single macro
    template.
 
-4. **Special token search is O(n×m)** — scanning for 5 tokens in
+4. **Special token search is O(n×m)**. Scanning for 5 tokens in
    long text. Aho-Corasick would be better for many special tokens.
 
-5. **No streaming API** — you must provide the entire text upfront.
+5. **No streaming API**. You must provide the entire text upfront.
    A streaming encoder would be useful for large documents.
 
 ## What You've Learned
@@ -247,7 +247,7 @@ dependencies, no forward declarations across modules.
 If you followed this tutorial from start to finish, you now know:
 
 ### About Tokenization
-- How BPE (Byte Pair Encoding) works — both training and inference
+- How BPE (Byte Pair Encoding) works, both training and inference
 - Why pre-tokenization with regex matters
 - How tiktoken's vocabulary format is structured
 - The role of special tokens in language model inputs
@@ -274,23 +274,23 @@ If you followed this tutorial from start to finish, you now know:
 
 Some directions to extend this project:
 
-1. **Priority-queue BPE** — replace the O(n²) merge loop with a min-heap
+1. **Priority-queue BPE**. Replace the O(n²) merge loop with a min-heap
    for O(n log n) performance.
 
-2. **Streaming encoder** — process text incrementally without buffering
+2. **Streaming encoder**. Process text incrementally without buffering
    the entire input.
 
-3. **Thread safety** — make `TiktokenEncoding` safe to share across
+3. **Thread safety**. Make `TiktokenEncoding` safe to share across
    threads (the current implementation is not thread-safe because
    `Regex` reuses match data).
 
-4. **Additional encodings** — implement `tiktoken_o200k_base()` and
+4. **Additional encodings**. Implement `tiktoken_o200k_base()` and
    `tiktoken_p50k_base()` preset constructors.
 
-5. **Benchmarking** — compare performance against Python tiktoken and
+5. **Benchmarking**. Compare performance against Python tiktoken and
    the Rust implementation.
 
-6. **WASM compilation** — compile to WebAssembly for browser-based
+6. **WASM compilation**. Compile to WebAssembly for browser-based
    token counting.
 
 ## Final Thoughts
@@ -306,7 +306,7 @@ modern software. This tutorial hopefully demonstrates that modern C
 - **Standard library additions** reduce dependence on platform-specific
   extensions.
 
-The language is still fundamentally about explicit control — you manage
+The language is still fundamentally about explicit control: you manage
 memory, you choose data layouts, you decide when and how to abstract.
 That's not a limitation; it's the point. When you need to understand
 exactly what your program does and why, C remains the right tool.

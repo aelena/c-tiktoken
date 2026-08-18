@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 5: Regex Pre-tokenization
+// c-tiktoken, Chapter 5: Regex Pre-tokenization
 //
 // Wraps PCRE2 to split input text into chunks before BPE encoding.
 // tiktoken uses a complex regex pattern with Unicode properties (\p{L},

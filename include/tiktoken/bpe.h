@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 4: BPE (Byte Pair Encoding) Algorithm
+// c-tiktoken, Chapter 4: BPE (Byte Pair Encoding) Algorithm
 //
 // The core merge algorithm that converts a byte sequence into a sequence
 // of token IDs. Given a vocabulary of ranked byte pairs, BPE repeatedly

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 6: Vocabulary Loading
+// c-tiktoken, Chapter 6: Vocabulary Loading
 //
 // Loads .tiktoken vocabulary files into a BpeRanks structure. Each line
 // of a .tiktoken file contains a base64-encoded token and its rank:

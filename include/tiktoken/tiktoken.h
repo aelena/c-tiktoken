@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// c-tiktoken — Chapter 8: Top-Level Convenience Header
+// c-tiktoken, Chapter 8: Top-Level Convenience Header
 //
 // Include this single header to get the complete tiktoken API.
 //
@@ -39,7 +39,7 @@
 // in this small project (we don't have complex platform conditionals).
 
 // tiktoken_from_file below calls malloc and memcpy. Without these, including
-// this header on its own is a hard error in C23 — implicit function
+// this header on its own is a hard error in C23: implicit function
 // declarations were removed from the language.
 #include <stdlib.h>
 #include <string.h>
