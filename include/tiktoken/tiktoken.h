@@ -38,6 +38,12 @@
 // in platform-detection headers. We note them here but don't use them
 // in this small project (we don't have complex platform conditionals).
 
+// tiktoken_from_file below calls malloc and memcpy. Without these, including
+// this header on its own is a hard error in C23 — implicit function
+// declarations were removed from the language.
+#include <stdlib.h>
+#include <string.h>
+
 #include "tiktoken/base64.h"
 #include "tiktoken/bytes.h"
 #include "tiktoken/arena.h"
