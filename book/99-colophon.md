@@ -10,11 +10,11 @@ If you find a divergence from the reference implementation, that is a bug and I 
 
 Antonio Elena is CTO at BEAI Energy. Over two decades across enterprise, consulting and startups he has worked as an architect, engineering leader and CTO, and was previously Global Head of Architecture & Technology at SGS, reporting to the Group CIO.
 
-He writes about architecture, cloud economics and AI strategy at **sig-intent.com**, and takes on selective advisory work — fractional CTO, architecture review, AI strategy — through the same.
+He writes about architecture, cloud economics and AI strategy at **sig-intent.com**, and takes on selective advisory work through the same site: fractional CTO, architecture review and AI strategy.
 
 ## Also available
 
-**XML-Structured Prompting: A Software Engineering Discipline for Reliable LLM Systems** — prompting treated as an engineering practice rather than a style preference. Vocabulary, constraints and output contracts as design interfaces; versioning, testing and governance for prompts that live in production.
+**XML-Structured Prompting: A Software Engineering Discipline for Reliable LLM Systems**. Prompting treated as an engineering practice rather than a style preference. Vocabulary, constraints and output contracts as design interfaces; versioning, testing and governance for prompts that live in production.
 
 Available at **aelena74.gumroad.com/l/xsp**.
 
