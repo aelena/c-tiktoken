@@ -46,8 +46,32 @@ typedef struct {
     size_t    len;     // number of occupied entries
 } B2iMap;
 
+// ── Ownership, which is the easiest thing to get wrong here ───────────
+//
+// Neither map copies the bytes it is given. b2i_insert stores the Bytes struct
+// by value, and that struct is a pointer plus a length, so what the map holds is
+// a pointer into memory somebody else owns.
+//
+//     Bytes k = bytes_from_str("hello");
+//     b2i_insert(&m, k, 7);
+//     bytes_free(&k);            // WRONG: the map now holds a dangling pointer
+//     b2i_get(&m, k, &out);      // reads freed memory, and usually "works"
+//
+// That last part is why this bug survives: freed heap normally still contains
+// the old bytes, so the lookup returns the right answer and the test passes.
+// AddressSanitizer is what tells you otherwise.
+//
+// The key's bytes must stay alive for as long as the map does. In this codebase
+// that is what the arena in VocabResult is for (Chapter 6): the arena owns every
+// token's bytes, the maps borrow them, and vocab_free releases the arena after
+// the maps. If you build a map by hand, you own the same obligation.
+//
+// The same applies to i2b_insert and the Bytes it takes as a value.
+
 [[nodiscard]] B2iMap   b2i_new(size_t initial_cap);
 void                   b2i_free(B2iMap *m);
+
+// Borrows key. See the ownership note above: the caller keeps the bytes alive.
 [[nodiscard]] bool     b2i_insert(B2iMap *m, Bytes key, uint32_t value);
 [[nodiscard]] bool     b2i_get(const B2iMap *m, Bytes key, uint32_t *out);
 [[nodiscard]] size_t   b2i_len(const B2iMap *m);
@@ -69,6 +93,8 @@ typedef struct {
 
 [[nodiscard]] I2bMap   i2b_new(size_t initial_cap);
 void                   i2b_free(I2bMap *m);
+
+// Borrows value. Same obligation as b2i_insert.
 [[nodiscard]] bool     i2b_insert(I2bMap *m, uint32_t key, Bytes value);
 [[nodiscard]] bool     i2b_get(const I2bMap *m, uint32_t key, Bytes *out);
 [[nodiscard]] size_t   i2b_len(const I2bMap *m);

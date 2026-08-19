@@ -185,32 +185,32 @@ static void test_b2i_many(void) {
     TEST("B2iMap: 1000 entries (triggers growth)");
     B2iMap m = b2i_new(16);
 
-    // Insert 1000 entries using numeric strings as keys.
+    // The map borrows its keys rather than copying them (see the ownership note
+    // in hash.h), so they have to stay alive for as long as the map does. This
+    // test used to free each key immediately after inserting it, which left the
+    // map holding a thousand dangling pointers. It passed anyway, because freed
+    // heap usually still holds the old bytes. AddressSanitizer disagreed.
+    Bytes keys[1000];
     char buf[32];
     for (uint32_t i = 0; i < 1000; i++) {
         int n = snprintf(buf, sizeof(buf), "key_%u", i);
-        Bytes k = bytes_from_raw((const uint8_t *)buf, (size_t)n);
-        ASSERT_TRUE(b2i_insert(&m, k, i));
-        bytes_free(&k);
+        keys[i] = bytes_from_raw((const uint8_t *)buf, (size_t)n);
+        ASSERT_TRUE(b2i_insert(&m, keys[i], i));
     }
 
     ASSERT_EQ(b2i_len(&m), 1000u);
 
-    // Verify all entries are retrievable.
     for (uint32_t i = 0; i < 1000; i++) {
-        int n = snprintf(buf, sizeof(buf), "key_%u", i);
-        Bytes k = bytes_from_raw((const uint8_t *)buf, (size_t)n);
         uint32_t val = 0;
-        ASSERT_TRUE(b2i_get(&m, k, &val));
-        if (val != i) {
-            bytes_free(&k);
+        if (!b2i_get(&m, keys[i], &val) || val != i) {
             b2i_free(&m);
+            for (uint32_t j = 0; j < 1000; j++) bytes_free(&keys[j]);
             FAIL("value mismatch in many-entries test");
         }
-        bytes_free(&k);
     }
 
     b2i_free(&m);
+    for (uint32_t i = 0; i < 1000; i++) bytes_free(&keys[i]);
     PASS();
 }
 
@@ -259,30 +259,30 @@ static void test_i2b_many(void) {
     TEST("I2bMap: 1000 entries");
     I2bMap m = i2b_new(16);
 
+    // Same borrow as B2iMap, on the value side this time: i2b_insert stores the
+    // Bytes struct, not a copy of the bytes, so the fixture keeps them alive
+    // until after the map is freed.
+    Bytes vals[1000];
     char buf[32];
     for (uint32_t i = 0; i < 1000; i++) {
         int n = snprintf(buf, sizeof(buf), "val_%u", i);
-        Bytes v = bytes_from_raw((const uint8_t *)buf, (size_t)n);
-        ASSERT_TRUE(i2b_insert(&m, i, v));
-        bytes_free(&v);
+        vals[i] = bytes_from_raw((const uint8_t *)buf, (size_t)n);
+        ASSERT_TRUE(i2b_insert(&m, i, vals[i]));
     }
 
     ASSERT_EQ(i2b_len(&m), 1000u);
 
     for (uint32_t i = 0; i < 1000; i++) {
-        int n = snprintf(buf, sizeof(buf), "val_%u", i);
-        Bytes expected = bytes_from_raw((const uint8_t *)buf, (size_t)n);
         Bytes out = {};
-        ASSERT_TRUE(i2b_get(&m, i, &out));
-        if (!bytes_equal(out, expected)) {
-            bytes_free(&expected);
+        if (!i2b_get(&m, i, &out) || !bytes_equal(out, vals[i])) {
             i2b_free(&m);
+            for (uint32_t j = 0; j < 1000; j++) bytes_free(&vals[j]);
             FAIL("value mismatch in many-entries test");
         }
-        bytes_free(&expected);
     }
 
     i2b_free(&m);
+    for (uint32_t i = 0; i < 1000; i++) bytes_free(&vals[i]);
     PASS();
 }
 
