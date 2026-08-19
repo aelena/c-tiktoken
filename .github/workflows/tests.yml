@@ -123,10 +123,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install clang and PCRE2
+      # libclang-rt-19-dev is the part people forget. The clang-19 package does
+      # not carry the sanitizer runtime archives, so linking anything with
+      # -fsanitize fails with "cannot find libclang_rt.asan.a" and it looks like
+      # a code problem rather than a missing package.
+      - name: Install clang, its sanitizer runtimes, and PCRE2
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang-19 libpcre2-dev
+          sudo apt-get install -y --no-install-recommends             clang-19 libclang-rt-19-dev libpcre2-dev
 
       # libFuzzer ships with clang, not gcc. The two targets drive the functions
       # that parse bytes this project did not write: the base64 decoder and the
