@@ -26,27 +26,39 @@ has three benefits:
 GPT-4 uses the cl100k_base encoding with this regex pattern:
 
 ```regex
-(?i:'s|'t|'re|'ve|'m|'ll|'d)
-|[^\r\n\p{L}\p{N}]?\p{L}+
-|\p{N}{1,3}
-| ?[^\s\p{L}\p{N}]++[\r\n]*
+'(?i:[sdmt]|ll|ve|re)
+|[^\r\n\p{L}\p{N}]?+\p{L}++
+|\p{N}{1,3}+
+| ?[^\s\p{L}\p{N}]++[\r\n]*+
+|\s++$
 |\s*[\r\n]
 |\s+(?!\S)
-|\s+
+|\s
 ```
+
+This is the pattern verbatim, copied out of the library rather than retyped.
+That matters more than it sounds: an earlier draft of this chapter carried a
+tidied version that read as though it did the same thing, and the accompanying
+code shipped a tidied `o200k_base` pattern that disagreed with the reference on
+roughly half of all inputs. A tokenizer pattern is a specification, not a
+description. If you find yourself simplifying one for readability, keep the
+original and compare against it.
 
 Each alternative (separated by `|`) matches a different type of text
 chunk. Let's break them down:
 
-### `(?i:'s|'t|'re|'ve|'m|'ll|'d)`: Contractions
+### `'(?i:[sdmt]|ll|ve|re)`: Contractions
 
-The `(?i:...)` group enables case-insensitive matching. This captures
-English contractions: "don**'t**", "I**'m**", "they**'re**", etc.
+The apostrophe sits outside the group, and the group itself is a character
+class plus three two-letter alternatives: `s`, `d`, `m`, `t`, `ll`, `ve`, `re`.
+Spelled out, that covers `'s`, `'d`, `'m`, `'t`, `'ll`, `'ve`, `'re`. The
+`(?i:...)` makes it case-insensitive, so `DON'T` splits the same way as
+`don't`.
 
-By matching contractions first, we prevent them from being split in
-unexpected ways. Without this, "don't" might become ["don", "'", "t"].
+Matching contractions first prevents them from being split in unexpected
+ways. Without this branch, "don't" might become `["don", "'", "t"]`.
 
-### `[^\r\n\p{L}\p{N}]?\p{L}+`: Words
+### `[^\r\n\p{L}\p{N}]?+\p{L}++`: Words
 
 `\p{L}` matches any Unicode letter (Latin, Cyrillic, Chinese, etc.).
 `\p{N}` matches any Unicode number.
@@ -56,13 +68,13 @@ non-letter, non-number character (like a space or punctuation). The
 effect is that words get their leading space attached: `" hello"` is
 one chunk, not `" "` + `"hello"`.
 
-### `\p{N}{1,3}`: Numbers
+### `\p{N}{1,3}+`: Numbers
 
 Matches 1 to 3 digits at a time. This means `12345` becomes `["123",
 "45"]`: numbers are tokenized in chunks of at most 3 digits. This
 prevents very long numbers from becoming single tokens.
 
-### ` ?[^\s\p{L}\p{N}]++[\r\n]*`: Punctuation
+### ` ?[^\s\p{L}\p{N}]++[\r\n]*+`: Punctuation
 
 Matches punctuation sequences (optionally preceded by a space), with
 any trailing newlines. The `++` is a **possessive quantifier**: it
@@ -74,10 +86,83 @@ need PCRE2 (standard POSIX regex doesn't support possessive quantifiers).
 Matches whitespace ending in a newline. This keeps newlines attached
 to preceding whitespace.
 
-### `\s+(?!\S)` and `\s+`: Whitespace
+### `\s++$`, `\s+(?!\S)` and `\s`: Whitespace
 
-The first matches trailing whitespace (whitespace not followed by a
-non-whitespace character). The second matches any remaining whitespace.
+Three branches, and the order is doing work.
+
+`\s++$` takes whitespace that runs to the end of the input. `\s+(?!\S)`
+takes a whitespace run that is not followed by a non-whitespace character,
+which is the same idea one position earlier. The last branch is a bare `\s`,
+a *single* whitespace character, not `\s+`.
+
+That final detail is easy to get wrong and hard to notice. If you write `\s+`
+there, a run of spaces in the middle of a line collapses into one chunk instead
+of being consumed one character at a time by the earlier branches, and the token
+ids come out different. It will still look like a tokenizer. It will just not be
+this one.
+
+## The three encodings, and why they differ
+
+The library exposes three patterns, because OpenAI has shipped three
+generations of tokenizer and each one changed the pre-tokenization rules.
+
+**`p50k_base`** is the GPT-3 and Codex era. Its shape is the simplest of the
+three: contractions, then a letter run, then a digit run, then a punctuation
+run, each optionally taking one leading space.
+
+```regex
+'(?:[sdmt]|ll|ve|re)| ?\p{L}++| ?\p{N}++| ?[^\s\p{L}\p{N}]++|\s++$|\s+(?!\S)|\s
+```
+
+Note ` ?\p{N}++`: digits run without limit. `"1234567"` is one chunk here.
+
+**`cl100k_base`** is GPT-3.5-turbo and GPT-4, and it is the one this book
+implements end to end. Two changes matter. Digits are capped at three per chunk
+(`\p{N}{1,3}+`), so long numbers are broken up rather than swallowed whole.
+And the leading-space rule moved: instead of ` ?` in front of each category, a
+word may absorb one preceding character that is neither a letter nor a digit
+(`[^\r\n\p{L}\p{N}]?+`), which is a wider net than a space.
+
+**`o200k_base`** is GPT-4o, and it is where the pattern stops being tidy:
+
+```regex
+[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?
+|[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?
+|\p{N}{1,3}
+| ?[^\s\p{L}\p{N}]+[\r\n/]*
+|\s*[\r\n]+
+|\s+(?!\S)
+|\s+
+```
+
+Two things changed, and both are about languages that are not English.
+
+The single "word" branch became two, and both are built from explicit Unicode
+letter categories rather than the blanket `\p{L}`: uppercase (`Lu`), titlecase
+(`Lt`), modifier (`Lm`), other (`Lo`), lowercase (`Ll`), and combining marks
+(`M`). One branch handles a capitalised word, the other an all-caps run, and
+each may take a trailing contraction. The effect is that `"McDonald"`,
+`"HTTP"` and `"iPhone"` chunk differently from each other, and that scripts
+with combining marks, such as Devanagari, Arabic and Hebrew, stop being cut in the
+middle of a grapheme.
+
+The other change is small and easy to miss: the punctuation branch is
+`[\r\n/]*`, not `[\r\n]*`. A forward slash now attaches to a punctuation
+run, which is a URL and file-path optimisation.
+
+### Why this is worth belabouring
+
+Because the code accompanying this book got it wrong. The `o200k_base` pattern
+here was, until recently, a hand-simplified version with one plain `\p{L}+`
+word branch and no case distinction. It compiled, it looked plausible, it
+tokenized text, and it disagreed with the official library on **490 of 1000
+generated inputs**. Nothing caught it for months, because the test suite only
+ever compared `cl100k_base`.
+
+The lesson is not "be careful". It is that a pre-tokenization pattern cannot be
+verified by reading it. The only check that works is running it against the
+reference implementation on inputs you did not choose by hand, which is what
+`tests/test_reference_batch.c` now does for all three.
 
 ## Why PCRE2?
 

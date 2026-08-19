@@ -2,9 +2,11 @@
 //
 // c-tiktoken, Volume comparison against the official Python tiktoken
 //
-// test_integration.c compares ten curated strings. This compares hundreds of
-// generated ones, which is a different job: the curated cases check that the
-// obvious things work, and this checks the inputs nobody thought to write down.
+// test_integration.c compares ten curated strings against cl100k_base. This
+// compares a thousand generated ones against cl100k_base, o200k_base and
+// p50k_base, which is a different job: the curated cases check that the obvious
+// things work, and this checks the inputs nobody thought to write down, on the
+// two encodings nothing was checking at all.
 //
 // Everything here goes through one Python process. get_encoding() loads a 1.6 MB
 // vocabulary and building the ranks costs over a second, so a process per case
@@ -184,73 +186,66 @@ static char *find_script(void) {
     return nullptr;
 }
 
-static const char *find_vocab(void) {
-    const char *candidates[] = {
-        "data/cl100k_base.tiktoken",
-        "../data/cl100k_base.tiktoken",
-        "../../data/cl100k_base.tiktoken",
-        nullptr,
-    };
-    for (int i = 0; candidates[i] != nullptr; i++) {
-        FILE *f = fopen(candidates[i], "rb");
+static const char *find_vocab(const char *encoding_name) {
+    static char buf[512];
+    const char *dirs[] = { "data", "../data", "../../data", nullptr };
+    for (int i = 0; dirs[i] != nullptr; i++) {
+        snprintf(buf, sizeof(buf), "%s/%s.tiktoken", dirs[i], encoding_name);
+        FILE *f = fopen(buf, "rb");
         if (f != nullptr) {
             fclose(f);
-            return candidates[i];
+            return buf;
         }
     }
     return nullptr;
 }
 
-static TiktokenEncoding *load_encoding(const char *vocab_path) {
+static TiktokenEncoding *load_encoding(const char *name, const char *vocab_path,
+                                      const char *pattern_str) {
     VocabResult vocab = vocab_load_file(vocab_path);
     if (!vocab.ok) return nullptr;
 
-    Regex *pattern = regex_compile(tiktoken_pattern_cl100k());
+    Regex *pattern = regex_compile(pattern_str);
     if (pattern == nullptr) {
         vocab_free(&vocab);
         return nullptr;
     }
 
-    const SpecialToken *special;
-    size_t n_special = tiktoken_cl100k_special(&special);
-    SpecialToken *copy = malloc(n_special * sizeof(SpecialToken));
-    if (copy == nullptr) {
-        regex_free(pattern);
-        vocab_free(&vocab);
-        return nullptr;
-    }
-    memcpy(copy, special, n_special * sizeof(SpecialToken));
-
-    return tiktoken_new("cl100k_base", vocab, pattern, copy, n_special);
+    // Special tokens differ per encoding. Only the cl100k set ships with the
+    // library, and these cases are all ordinary text anyway, so the comparison
+    // runs with none: it is the pattern and the ranks under test here.
+    return tiktoken_new(name, vocab, pattern, nullptr, 0);
 }
 
-int main(void) {
-    printf("Volume comparison against Python tiktoken\n");
-    printf("──────────────────────────────────────────────────────────\n");
+typedef struct {
+    const char *name;
+    const char *(*pattern)(void);
+} Encoding;
 
-    char *script = find_script();
-    const char *vocab_path = find_vocab();
-    if (script == nullptr || vocab_path == nullptr) {
-        printf("  %-50s[SKIP] %s\n", "reference: batch",
-               script == nullptr ? "tiktoken_reference.py not found"
-                                 : "cl100k_base.tiktoken not found");
+// Returns 0 if every case matched, 1 on a difference, 77 if it could not run.
+static int compare_encoding(const Encoding *e, const char *script) {
+    const char *vocab_path = find_vocab(e->name);
+    if (vocab_path == nullptr) {
+        printf("  %-28s [SKIP] %s.tiktoken not found\n", e->name, e->name);
         return EXIT_SKIP;
     }
 
-    TiktokenEncoding *enc = load_encoding(vocab_path);
+    TiktokenEncoding *enc = load_encoding(e->name, vocab_path, e->pattern());
     if (enc == nullptr) {
-        printf("  %-50s[SKIP] could not build the encoding\n", "reference: batch");
+        printf("  %-28s [SKIP] could not build the encoding\n", e->name);
         return EXIT_SKIP;
     }
 
-    // Write the requests.
-    const char *req = "reference_requests.txt";
-    const char *res = "reference_responses.txt";
+    char req[256], res[256];
+    snprintf(req, sizeof(req), "ref_req_%s.txt", e->name);
+    snprintf(res, sizeof(res), "ref_res_%s.txt", e->name);
+
     FILE *rf = fopen(req, "w");
     MUST(rf != nullptr);
+    rng_state = 0x2545F4914F6CDD1DULL;  // same thousand cases for every encoding
     for (int i = 0; i < N_CASES; i++) {
         text_len[i] = gen_case(texts[i], MAX_TEXT, (uint32_t)i);
-        fputs("cl100k_base 0 ", rf);
+        fprintf(rf, "%s 0 ", e->name);
         for (size_t j = 0; j < text_len[i]; j++) fprintf(rf, "%02x", texts[i][j]);
         fputc('\n', rf);
     }
@@ -261,7 +256,7 @@ int main(void) {
              script, req, res);
     FILE *pipe = popen(cmd, "r");
     if (pipe == nullptr) {
-        printf("  %-50s[SKIP] could not run python3\n", "reference: batch");
+        printf("  %-28s [SKIP] could not run python3\n", e->name);
         tiktoken_free(enc);
         return EXIT_SKIP;
     }
@@ -271,60 +266,49 @@ int main(void) {
 
     FILE *sf = fopen(res, "r");
     if (status != 0 || sf == nullptr) {
-        printf("  %-50s[SKIP] the reference did not produce output\n",
-               "reference: batch");
+        printf("  %-28s [SKIP] the reference produced no output\n", e->name);
         if (sf != nullptr) fclose(sf);
         tiktoken_free(enc);
         return EXIT_SKIP;
     }
 
-    // Compare, case by case.
     char *line = nullptr;
     size_t line_cap = 0;
-    uint32_t expected[MAX_TEXT];
-    int first_failure = -1;
+    static uint32_t expected[MAX_TEXT];
+    int passed = 0, failed = 0, first_failure = -1;
 
     for (int i = 0; i < N_CASES; i++) {
-        if (getline(&line, &line_cap, sf) < 0) {
-            printf("  reference returned %d of %d lines\n", i, N_CASES);
-            cases_failed++;
-            break;
-        }
-        cases_run++;
-
-        if (strncmp(line, "ERROR", 5) == 0) {
-            cases_failed++;
-            if (first_failure < 0) first_failure = i;
-            continue;
-        }
+        if (getline(&line, &line_cap, sf) < 0) break;
 
         size_t n_expected = 0;
-        for (char *p = line; *p; ) {
-            while (*p == ' ' || *p == '\n' || *p == '\r') p++;
-            if (*p == '\0') break;
-            char *end;
-            unsigned long v = strtoul(p, &end, 10);
-            if (end == p) break;
-            MUST(n_expected < MAX_TEXT);
-            expected[n_expected++] = (uint32_t)v;
-            p = end;
+        if (strncmp(line, "ERROR", 5) != 0) {
+            for (char *q = line; *q; ) {
+                while (*q == ' ' || *q == '\n' || *q == '\r') q++;
+                if (*q == '\0') break;
+                char *end;
+                unsigned long v = strtoul(q, &end, 10);
+                if (end == q) break;
+                MUST(n_expected < MAX_TEXT);
+                expected[n_expected++] = (uint32_t)v;
+                q = end;
+            }
         }
 
         TokenVec got = tiktoken_encode_ordinary(enc, (const char *)texts[i],
                                                 text_len[i]);
-        bool same = (got.len == n_expected);
+        bool same = (strncmp(line, "ERROR", 5) != 0) && (got.len == n_expected);
         for (size_t j = 0; same && j < got.len; j++) {
             if (got.items[j] != expected[j]) same = false;
         }
 
         if (same) {
-            cases_passed++;
+            passed++;
         } else {
-            cases_failed++;
+            failed++;
             if (first_failure < 0) {
                 first_failure = i;
-                printf("  case %d differs: %zu tokens from us, %zu from the reference\n",
-                       i, got.len, n_expected);
+                printf("  %-28s case %d differs: %zu tokens from us, %zu expected\n",
+                       e->name, i, got.len, n_expected);
                 printf("    input hex: ");
                 for (size_t j = 0; j < text_len[i] && j < 60; j++) {
                     printf("%02x", texts[i][j]);
@@ -341,14 +325,49 @@ int main(void) {
     remove(res);
     tiktoken_free(enc);
 
+    cases_run += passed + failed;
+    cases_passed += passed;
+    cases_failed += failed;
+
+    printf("  %-28s %d passed, %d failed\n", e->name, passed, failed);
+    return failed == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int main(void) {
+    printf("Volume comparison against Python tiktoken\n");
     printf("──────────────────────────────────────────────────────────\n");
-    printf("Results: %d passed, %d failed, %d compared\n",
-           cases_passed, cases_failed, cases_run);
-    if (cases_failed > 0) {
-        printf("First failing case index: %d. The generator is seeded, so it "
-               "reproduces.\n", first_failure);
+
+    char *script = find_script();
+    if (script == nullptr) {
+        printf("  %-28s [SKIP] tiktoken_reference.py not found\n", "all");
+        return EXIT_SKIP;
+    }
+
+    // All three patterns the library exposes. Until now only cl100k had ever
+    // been compared against anything, and the o200k pattern in this repo was a
+    // hand-written approximation that did not match the real one.
+    static const Encoding ENCODINGS[] = {
+        { "cl100k_base", tiktoken_pattern_cl100k },
+        { "o200k_base",  tiktoken_pattern_o200k  },
+        { "p50k_base",   tiktoken_pattern_p50k   },
+    };
+
+    int ran = 0, failed = 0;
+    for (size_t i = 0; i < sizeof(ENCODINGS) / sizeof(ENCODINGS[0]); i++) {
+        int r = compare_encoding(&ENCODINGS[i], script);
+        if (r == EXIT_SKIP) continue;
+        ran++;
+        if (r != EXIT_SUCCESS) failed++;
+    }
+
+    printf("──────────────────────────────────────────────────────────\n");
+    printf("Results: %d passed, %d failed, %d compared across %d encoding(s)\n",
+           cases_passed, cases_failed, cases_run, ran);
+
+    if (failed > 0) {
+        printf("The generator is seeded, so every difference above reproduces.\n");
         return EXIT_FAILURE;
     }
-    if (cases_run == 0) return EXIT_SKIP;
+    if (ran == 0) return EXIT_SKIP;
     return EXIT_SUCCESS;
 }

@@ -192,36 +192,48 @@ RegexMatchVec regex_find_all(const Regex *re,
 //   \s+(?!\S)                       : trailing whitespace (not before non-ws)
 //   \s+                             : remaining whitespace
 
+// The cl100k_base pattern (GPT-4, GPT-3.5-turbo).
+// Verbatim from the tiktoken package: tiktoken.get_encoding("cl100k_base")._pat_str
+// Do not tidy these. A pattern that looks equivalent is not, and the only
+// way to know is to compare token for token against the reference.
 const char *tiktoken_pattern_cl100k(void) {
     return
-        "(?i:'s|'t|'re|'ve|'m|'ll|'d)"
-        "|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+"
-        "|\\p{N}{1,3}"
-        "| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*"
+        "'(?i:[sdmt]|ll|ve|re)"
+        "|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}++"
+        "|\\p{N}{1,3}+"
+        "| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*+"
+        "|\\s++$"
         "|\\s*[\\r\\n]"
         "|\\s+(?!\\S)"
-        "|\\s+";
+        "|\\s";
 }
 
+// The o200k_base pattern (GPT-4o).
+// Verbatim from the tiktoken package: tiktoken.get_encoding("o200k_base")._pat_str
+// Do not tidy these. A pattern that looks equivalent is not, and the only
+// way to know is to compare token for token against the reference.
 const char *tiktoken_pattern_o200k(void) {
-    // o200k_base uses a more complex pattern with additional Unicode
-    // handling. This is a simplified version that matches the key
-    // behavior.
     return
-        "[^\\r\\n\\p{L}\\p{N}]?\\p{L}+"
+        "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?"
+        "|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?"
         "|\\p{N}{1,3}"
-        "| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*"
-        "|\\s*[\\r\\n]"
+        "| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*"
+        "|\\s*[\\r\\n]+"
         "|\\s+(?!\\S)"
         "|\\s+";
 }
 
+// The p50k_base pattern (GPT-3, Codex).
+// Verbatim from the tiktoken package: tiktoken.get_encoding("p50k_base")._pat_str
+// Do not tidy these. A pattern that looks equivalent is not, and the only
+// way to know is to compare token for token against the reference.
 const char *tiktoken_pattern_p50k(void) {
     return
-        "'s|'t|'re|'ve|'m|'ll|'d"
-        "| ?\\p{L}+"
-        "| ?\\p{N}+"
-        "| ?[^\\s\\p{L}\\p{N}]+"
-        "|\\s+(?=[\\S])"
-        "|\\s+";
+        "'(?:[sdmt]|ll|ve|re)"
+        "| ?\\p{L}++"
+        "| ?\\p{N}++"
+        "| ?[^\\s\\p{L}\\p{N}]++"
+        "|\\s++$"
+        "|\\s+(?!\\S)"
+        "|\\s";
 }
