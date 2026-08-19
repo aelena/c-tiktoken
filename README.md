@@ -28,10 +28,14 @@ vocabulary, in about 1,800 lines of C23 with one dependency.
   ~2.37 for a miss.
 - **Arena allocation** for token bytes, so a 100K-entry vocabulary is one
   allocation and one `free` rather than 100K of each.
-- **PCRE2 pre-tokenization**, with the cl100k, o200k and p50k patterns supplied.
+- **PCRE2 pre-tokenization** with the cl100k, o200k and p50k patterns, each one
+  copied verbatim from the reference implementation and each one compared against
+  it on a thousand generated inputs.
 - **Special tokens** either emitted as their own id or treated as ordinary text.
-- **Nine test binaries, 94 assertions**, no test framework. Clean under `-Wall
-  -Wextra -Wpedantic -Wconversion -Wsign-conversion`.
+- **Ten test binaries**, no test framework, clean under `-Wall -Wextra -Wpedantic
+  -Wconversion -Wsign-conversion` and clean under AddressSanitizer and UBSan.
+- **3,000 comparisons against the Python package** on every push: a thousand
+  generated inputs against each of the three encodings, plus ten curated cases.
 
 ### What it is not
 

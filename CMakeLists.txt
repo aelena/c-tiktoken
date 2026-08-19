@@ -90,6 +90,13 @@ add_executable(test_roundtrip tests/test_roundtrip.c)
 target_link_libraries(test_roundtrip PRIVATE tiktoken)
 add_test(NAME roundtrip COMMAND test_roundtrip)
 
+# Volume comparison against the Python package. Same inputs as the integration
+# suite needs, so the same skip convention applies.
+add_executable(test_reference_batch tests/test_reference_batch.c)
+target_link_libraries(test_reference_batch PRIVATE tiktoken)
+add_test(NAME reference_batch COMMAND test_reference_batch)
+set_tests_properties(reference_batch PROPERTIES SKIP_RETURN_CODE 77)
+
 # Examples
 add_executable(count_tokens examples/count_tokens.c)
 target_link_libraries(count_tokens PRIVATE tiktoken)

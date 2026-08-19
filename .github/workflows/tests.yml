@@ -67,6 +67,56 @@ jobs:
           ./count_tokens "Hello, world!" || true
           ./encode_decode || true
 
+  sanitizers:
+    name: asan + ubsan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain and PCRE2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-14 libpcre2-dev
+
+      # AddressSanitizer catches what C lets you do quietly: reading freed memory,
+      # writing past a buffer, leaking. It found a heap-use-after-free in this
+      # repo's own test suite the first time it ran, in two minutes, on tests that
+      # had been passing for months. UBSan covers signed overflow, bad shifts and
+      # misaligned access. Neither is optional for a C codebase doing its own
+      # arena allocation and pointer arithmetic.
+      - name: Build with sanitizers
+        run: |
+          SAN="-fsanitize=address,undefined"
+          cmake -S . -B san \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=gcc-14 \
+            -DCMAKE_C_FLAGS="$SAN -fno-omit-frame-pointer -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="$SAN"
+          cmake --build san -j"$(nproc)"
+
+      # A sanitizer report does not always change the exit code, so the output is
+      # searched as well. Leaks are errors here, not warnings.
+      - name: Unit tests under sanitizers
+        working-directory: san
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: print_stacktrace=1
+        run: |
+          set +e
+          fail=0
+          for t in base64 bytes hash bpe regex vocab encoding roundtrip; do
+            out=$(./test_$t 2>&1); status=$?
+            reported=$(echo "$out" | grep -cE 'ERROR: (Address|Leak)Sanitizer|runtime error:')
+            if [ "$status" != "0" ] || [ "$reported" != "0" ]; then
+              echo "::error::test_$t failed under sanitizers"
+              echo "$out" | tail -40
+              fail=1
+            else
+              echo "test_$t clean"
+            fi
+          done
+          exit "$fail"
+
   reference:
     name: vs Python tiktoken
     runs-on: ubuntu-24.04
@@ -86,19 +136,27 @@ jobs:
         run: pip install -r requirements.txt
 
       # 1.6 MB from OpenAI on every run is rude, and the file never changes.
-      - name: Cache the vocabulary
+      # Six megabytes from OpenAI on every run is rude, and the files never change.
+      - name: Cache the vocabularies
         id: vocab
         uses: actions/cache@v4
         with:
-          path: data/cl100k_base.tiktoken
-          key: cl100k-base-v1
+          path: data
+          key: tiktoken-vocabs-v2
 
-      - name: Download the vocabulary
+      # All three, because all three patterns are compared now. The o200k pattern
+      # in this repo used to be a hand-written approximation, and it disagreed
+      # with the reference on 490 of 1000 generated inputs. Nothing caught that,
+      # because nothing was comparing it.
+      - name: Download the vocabularies
         if: steps.vocab.outputs.cache-hit != 'true'
         run: |
           mkdir -p data
-          curl -sSfL -o data/cl100k_base.tiktoken \
-            https://openaipublic.blob.core.windows.net/encodings/cl100k_base.tiktoken
+          base=https://openaipublic.blob.core.windows.net/encodings
+          for e in cl100k_base o200k_base p50k_base; do
+            curl -sSfL -o "data/$e.tiktoken" "$base/$e.tiktoken"
+          done
+          ls -la data
 
       - name: Build
         run: |
@@ -112,16 +170,21 @@ jobs:
         working-directory: build
         run: |
           cp -r ../data .
+          cp -r ../tests .
           set +e
-          ./test_integration | tee integration.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" = "77" ]; then
-            echo '::error::the reference comparison did not run'
-            exit 1
-          fi
-          if grep -q '\[SKIP\]' integration.log; then
-            echo '::error::a case was skipped; this job exists to run all of them'
-            exit 1
-          fi
-          exit "$status"
+          fail=0
+          for t in test_integration test_reference_batch; do
+            ./$t | tee $t.log
+            status=${PIPESTATUS[0]}
+            if [ "$status" = "77" ]; then
+              echo "::error::$t did not run; the setup above failed silently"
+              fail=1
+            elif [ "$status" != "0" ]; then
+              echo "::error::$t reported a difference from the reference"
+              fail=1
+            elif grep -q '\[SKIP\]' $t.log; then
+              echo "::error::$t skipped a case; this job exists to run all of them"
+              fail=1
+            fi
+          done
+          exit "$fail"

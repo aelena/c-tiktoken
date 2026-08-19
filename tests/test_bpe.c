@@ -61,18 +61,30 @@ static int tests_failed = 0;
 
 // ── Helper: insert a token into the vocabulary ─────────────────────────
 
+// Both maps borrow the key bytes rather than copying them, so somebody has to own
+// them and outlive the maps. In the library that somebody is the arena in
+// VocabResult (Chapter 6). Here it is this fixture: one allocation per token,
+// lent to both maps, released by free_test_vocab after the maps are gone.
+#define MAX_FIXTURE_TOKENS 32
+static Bytes fixture_tokens[MAX_FIXTURE_TOKENS];
+static size_t n_fixture_tokens;
+
+static Bytes fixture_own(Bytes b) {
+    MUST(n_fixture_tokens < MAX_FIXTURE_TOKENS);
+    fixture_tokens[n_fixture_tokens++] = b;
+    return b;
+}
+
 static void add_token(BpeRanks *r, const char *token_str, uint32_t rank) {
-    Bytes key = bytes_from_str(token_str);
+    Bytes key = fixture_own(bytes_from_str(token_str));
     MUST(b2i_insert(&r->encoder, key, rank));
     MUST(i2b_insert(&r->decoder, rank, key));
     r->vocab_size++;
-    // Note: in tests we leak the Bytes keys. In production, the arena
-    // owns this data. Fine for short-lived tests.
 }
 
 static void add_token_raw(BpeRanks *r, const uint8_t *data, size_t len,
                            uint32_t rank) {
-    Bytes key = bytes_from_raw(data, len);
+    Bytes key = fixture_own(bytes_from_raw(data, len));
     MUST(b2i_insert(&r->encoder, key, rank));
     MUST(i2b_insert(&r->decoder, rank, key));
     r->vocab_size++;
@@ -109,6 +121,11 @@ static BpeRanks make_test_vocab(void) {
 static void free_test_vocab(BpeRanks *r) {
     b2i_free(&r->encoder);
     i2b_free(&r->decoder);
+    // The maps are gone, so the borrowed bytes can go now and not before.
+    for (size_t i = 0; i < n_fixture_tokens; i++) {
+        bytes_free(&fixture_tokens[i]);
+    }
+    n_fixture_tokens = 0;
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────
