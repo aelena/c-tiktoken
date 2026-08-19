@@ -96,18 +96,32 @@ static bool parse_line(const char *line, size_t line_len,
 
     // ── Parse rank integer ─────────────────────────────────────────
     //
-    // C23 note: we could use <stdckdint.h>'s checked arithmetic here
-    // to detect overflow during parsing. For simplicity, we use strtoul
-    // and check errno.
+    // This used to call strtoul with a null endptr and check errno, on the
+    // assumption that errno reports a failed conversion. It does not: strtoul
+    // sets errno for ERANGE and for nothing else. Given "q" it returned 0,
+    // left errno untouched, and this function reported success with a rank of
+    // zero. A fuzzer found that in nineteen executions, using a two-line file
+    // whose second rank was the letter q, and the consequence was two tokens
+    // claiming rank 0.
+    //
+    // Every character has to be a digit. That is stricter than strtoul and it
+    // is exactly what the file format allows: no sign, no whitespace, no hex.
+
+    if (rank_len >= 32) return false;
+    for (size_t i = 0; i < rank_len; i++) {
+        if (rank_str[i] < '0' || rank_str[i] > '9') return false;
+    }
 
     char rank_buf[32];
-    if (rank_len >= sizeof(rank_buf)) return false;
     memcpy(rank_buf, rank_str, rank_len);
     rank_buf[rank_len] = '\0';
 
     errno = 0;
-    unsigned long rank_val = strtoul(rank_buf, nullptr, 10);
-    if (errno != 0 || rank_val > UINT32_MAX) return false;
+    char *end = nullptr;
+    unsigned long rank_val = strtoul(rank_buf, &end, 10);
+    if (errno != 0 || end != rank_buf + rank_len || rank_val > UINT32_MAX) {
+        return false;
+    }
 
     *out_rank = (uint32_t)rank_val;
     return true;
@@ -153,11 +167,27 @@ VocabResult vocab_load_mem(const char *data, size_t data_len) {
                 // still loads and then mistokenises every input that touches
                 // the gap, silently and forever, so an insertion failure
                 // has to fail the whole load, not one line of it.
+                size_t before_enc = b2i_len(&result.ranks.encoder);
+                size_t before_dec = i2b_len(&result.ranks.decoder);
+
                 if (!b2i_insert(&result.ranks.encoder, token_bytes, rank)
                     || !i2b_insert(&result.ranks.decoder, rank, token_bytes)) {
                     vocab_free(&result);
                     return result;
                 }
+
+                // Both maps overwrite on a duplicate key rather than growing,
+                // so a repeated rank or a repeated token used to leave the two
+                // maps and vocab_size disagreeing, with ok still true. The
+                // decoder would have lost an entry and nothing would say so.
+                // A duplicate means the file is malformed, and a malformed
+                // vocabulary has to fail rather than load at the wrong size.
+                if (b2i_len(&result.ranks.encoder) == before_enc
+                    || i2b_len(&result.ranks.decoder) == before_dec) {
+                    vocab_free(&result);
+                    return result;
+                }
+
                 result.ranks.vocab_size++;
             }
         }
