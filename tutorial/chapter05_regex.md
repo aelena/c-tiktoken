@@ -164,6 +164,40 @@ verified by reading it. The only check that works is running it against the
 reference implementation on inputs you did not choose by hand, which is what
 `tests/test_reference_batch.c` now does for all three.
 
+### One thing that is not portable
+
+That comparison found something else on its first run in CI, and it is worth
+knowing before you ship a tokenizer anywhere.
+
+Two of three thousand cases disagreed with the reference. The same two passed on
+the machine they were written on. The input responsible contained `U+12A90`, and
+`U+12A90` is unassigned: its Unicode category is `Cn`, not a letter, not a symbol,
+not anything.
+
+Whether `\p{L}` matches an unassigned code point depends on the Unicode version
+compiled into the regex engine doing the matching. PCRE2 on one machine had a
+different answer from the Rust engine inside the Python package, so the same bytes
+pre-tokenized into different chunks and the token ids diverged.
+
+Three things follow.
+
+The first is practical: if you tokenize text that might contain unassigned code
+points, and you need bit-identical output to a reference implementation, the
+Unicode version of your regex engine is part of your contract. It is not usually
+in anyone's dependency pinning, and it changes when the distribution updates.
+
+The second is about testing. A generated-input test that wanders into unassigned
+code points is a test that fails depending on which machine ran it, and a test
+that fails intermittently is a test people learn to ignore. The generator in
+`test_reference_batch.c` draws from curated, long-assigned ranges for exactly that
+reason, and the comment above the ranges says so, because otherwise the next
+person to read it will widen them again.
+
+The third is that real text does not contain unassigned code points, so none of
+this shows up until a fuzzer or a generator finds it. Which is the argument for
+having one.
+
+
 ## Why PCRE2?
 
 We need PCRE2 for three features that POSIX regex doesn't support:

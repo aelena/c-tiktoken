@@ -63,32 +63,65 @@ static const char *const WORDS[] = {
 };
 #define N_WORDS (sizeof(WORDS) / sizeof(WORDS[0]))
 
-// Appends one valid UTF-8 code point of the requested byte length.
+// Code point ranges to draw from, one group per UTF-8 encoded length.
+//
+// These are curated rather than random, and the reason is a bug this test had on
+// its first CI run. Picking arbitrary values inside U+0080..U+10FFFF produces
+// code points that are *unassigned*: U+12A90, for one, whose Unicode category is
+// Cn. Whether \p{L} matches an unassigned code point depends on the Unicode
+// version compiled into the regex engine, so PCRE2 on the runner classified it
+// one way and the Rust engine inside tiktoken classified it the other, and two
+// of three thousand cases disagreed depending on which machine ran them.
+//
+// Real text does not contain unassigned code points, and a test that fails based
+// on the host's PCRE2 build is a test that gets ignored. So these ranges are all
+// long-assigned and stable across versions. The portability caveat itself is
+// worth knowing and is written up in Chapter 5, but it does not belong in an
+// assertion.
+typedef struct { uint32_t lo, hi; } CpRange;
+
+static const CpRange CP2[] = {   // two bytes
+    { 0x00C0, 0x00FF },          // Latin-1 letters
+    { 0x0391, 0x03C9 },          // Greek
+    { 0x0410, 0x044F },          // Cyrillic
+};
+static const CpRange CP3[] = {   // three bytes
+    { 0x4E00, 0x9FFF },          // CJK Unified Ideographs
+    { 0x3041, 0x3096 },          // Hiragana
+    { 0xAC00, 0xD7A3 },          // Hangul syllables
+};
+static const CpRange CP4[] = {   // four bytes
+    { 0x1F300, 0x1F5FF },        // symbols and pictographs
+    { 0x1F600, 0x1F64F },        // emoticons
+};
+
+// Appends one valid, assigned UTF-8 code point of the requested byte length.
 static size_t append_utf8(uint8_t *out, size_t cap, size_t len, int nbytes) {
     if (len + 4 >= cap) return len;
+
+    const CpRange *set;
+    size_t n_set;
     switch (nbytes) {
-    case 2: {  // U+0080 to U+07FF: accents, Cyrillic, Greek
-        uint32_t cp = 0x80 + rnd(0x780);
+    case 2:  set = CP2; n_set = sizeof(CP2) / sizeof(CP2[0]); break;
+    case 3:  set = CP3; n_set = sizeof(CP3) / sizeof(CP3[0]); break;
+    default: set = CP4; n_set = sizeof(CP4) / sizeof(CP4[0]); break;
+    }
+
+    const CpRange *r = &set[rnd((uint32_t)n_set)];
+    uint32_t cp = r->lo + rnd(r->hi - r->lo + 1);
+
+    if (cp < 0x800) {
         out[len++] = (uint8_t)(0xC0 | (cp >> 6));
         out[len++] = (uint8_t)(0x80 | (cp & 0x3F));
-        break;
-    }
-    case 3: {  // U+0800 to U+FFFF, skipping the surrogate range
-        uint32_t cp = 0x800 + rnd(0xF000);
-        if (cp >= 0xD800 && cp <= 0xDFFF) cp = 0x4E00 + rnd(0x100);
+    } else if (cp < 0x10000) {
         out[len++] = (uint8_t)(0xE0 | (cp >> 12));
         out[len++] = (uint8_t)(0x80 | ((cp >> 6) & 0x3F));
         out[len++] = (uint8_t)(0x80 | (cp & 0x3F));
-        break;
-    }
-    default: {  // U+10000 and up: emoji and the rest of the astral planes
-        uint32_t cp = 0x10000 + rnd(0x10000);
+    } else {
         out[len++] = (uint8_t)(0xF0 | (cp >> 18));
         out[len++] = (uint8_t)(0x80 | ((cp >> 12) & 0x3F));
         out[len++] = (uint8_t)(0x80 | ((cp >> 6) & 0x3F));
         out[len++] = (uint8_t)(0x80 | (cp & 0x3F));
-        break;
-    }
     }
     return len;
 }
