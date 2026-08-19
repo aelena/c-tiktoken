@@ -28,39 +28,110 @@ each token. If each one calls `malloc` individually, we end up with:
 - 100K+ individual `free` calls on cleanup
 - Allocator overhead per block (typically 16–32 bytes of metadata)
 
-An **arena allocator** solves all three problems:
+An **arena allocator** solves all three problems. Allocation is a **bump**:
+advance a cursor by the requested size. Deallocation is **all-or-nothing**: throw
+the whole thing away at once.
+
+The obvious implementation is a single block that you grow when it fills up:
 
 ```c
+// Do not do this. The next section explains why.
 typedef struct {
-    uint8_t *base;    // one big contiguous block
-    size_t   used;    // high-water mark (bump pointer)
-    size_t   cap;     // total capacity
+    uint8_t *base;
+    size_t   used;
+    size_t   cap;
 } Arena;
-```
 
-Allocation is a **bump**: advance the `used` pointer by the requested size.
-Deallocation is **all-or-nothing**: free the entire block at once.
-
-### How It Works
-
-```c
 uint8_t *arena_alloc(Arena *a, size_t size, size_t align) {
     size_t aligned = align_up(a->used, align);
-    size_t needed  = aligned + size;
-
-    if (needed > a->cap) {
-        // Grow by doubling
+    if (aligned + size > a->cap) {
         size_t new_cap = a->cap * 2;
-        if (new_cap < needed) new_cap = needed;
-        a->base = realloc(a->base, new_cap);
+        if (new_cap < aligned + size) new_cap = aligned + size;
+        a->base = realloc(a->base, new_cap);   // <-- the bug
         a->cap  = new_cap;
     }
-
     uint8_t *ptr = a->base + aligned;
     a->used = aligned + size;
     return ptr;
 }
 ```
+
+### The bug in that code, which shipped in this repository
+
+`realloc` is allowed to move the block. When it does, every pointer the arena has
+already handed out becomes dangling.
+
+That is fatal here, and not in a subtle way. The whole reason the hash maps in
+Part 2 can borrow their key bytes from the arena instead of copying them is the
+promise that an arena pointer stays put. Grow the arena with `realloc` and both
+maps are left full of pointers into freed memory, and lookups start comparing
+against whatever the allocator put there next.
+
+This version was in the accompanying code for months. It survived because
+`vocab_load_mem` pre-sizes the arena at roughly twenty bytes per token, and the
+real `cl100k_base` vocabulary fits, so the growth path almost never ran. The tests
+passed. The comparison against the reference implementation passed on every input
+anyone thought to write down.
+
+A fuzzer found it in under a minute, on a vocabulary file whose tokens were longer
+than the estimate.
+
+### What an arena actually is
+
+A list of blocks. When the newest block cannot satisfy a request, chain a new one
+in front and leave the old ones exactly where they are:
+
+```c
+struct ArenaBlock {
+    ArenaBlock *next;
+    size_t      cap;
+    size_t      used;
+    uint8_t     data[];   // payload follows the header, so a block is one malloc
+};
+
+typedef struct {
+    ArenaBlock *blocks;   // newest first
+    size_t      used;     // used in the newest block
+    size_t      cap;      // capacity of the newest block
+    size_t      total;    // handed out across every block
+} Arena;
+
+uint8_t *arena_alloc(Arena *a, size_t size, size_t align) {
+    ArenaBlock *b = a->blocks;
+    size_t aligned = align_up(b->used, align);
+
+    if (aligned > b->cap || size > b->cap - aligned) {
+        size_t next_cap = b->cap <= SIZE_MAX / 2 ? b->cap * 2 : b->cap;
+        if (next_cap < size) next_cap = size;
+
+        ArenaBlock *nb = block_new(next_cap);
+        if (nb == nullptr) return nullptr;
+
+        nb->next  = a->blocks;   // nothing already allocated moves
+        a->blocks = nb;
+        b = nb;
+        aligned = 0;
+    }
+
+    uint8_t *ptr = b->data + aligned;
+    b->used = aligned + size;
+    a->total += size;
+    return ptr;
+}
+```
+
+Note the overflow-safe capacity check. `aligned + size > b->cap` can wrap and
+report that a request fits when it does not, so the comparison is written as
+`size > b->cap - aligned` with the subtraction guarded.
+
+The cost is one extra pointer per block and a slightly less cache-friendly layout
+when the arena has grown many times. Pre-sizing sensibly, which
+`vocab_load_mem` does, means it usually has one block anyway. What you buy is the
+property the rest of the design depends on: **a pointer from this arena is valid
+until the arena is reset or freed, and nothing else invalidates it.**
+
+That sentence is now the first thing in `arena.h`, because a caller who does not
+know it will write the same bug in their own code.
 
 **Alignment** matters because some architectures fault on unaligned
 accesses, and even x86 is slower when data crosses cache line boundaries.

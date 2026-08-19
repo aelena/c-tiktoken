@@ -1,0 +1,8 @@
+# Fuzz corpus entries are exact byte sequences, not text. Several of them are the
+# inputs that crashed a parser, and a crash reproduces only if the bytes are
+# identical. Line-ending normalisation would rewrite them on checkout and they
+# would quietly stop reproducing anything.
+fuzz/corpus/** -text -diff
+
+# Vocabulary files, if anyone commits one.
+*.tiktoken -text -diff

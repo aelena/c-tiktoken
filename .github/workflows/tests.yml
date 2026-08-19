@@ -37,9 +37,18 @@ jobs:
 
       - name: Install toolchain and PCRE2
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            ${{ matrix.cc }} libpcre2-dev
+          # apt on the runners hangs often enough to be worth retrying:
+          # two runs in one afternoon were marked failed for it, with no
+          # output and nothing wrong with the code.
+          for attempt in 1 2 3; do
+            sudo apt-get update -qq && \
+              sudo apt-get install -y --no-install-recommends \
+                ${{ matrix.cc }} libpcre2-dev && break
+            echo "apt attempt $attempt failed, retrying"
+            sleep 10
+          done
+          # A missing package must not look like a build failure.
+          command -v cmake >/dev/null || { echo '::error::apt never succeeded'; exit 1; }
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=${{ matrix.cc }}
@@ -75,8 +84,18 @@ jobs:
 
       - name: Install toolchain and PCRE2
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-14 libpcre2-dev
+          # apt on the runners hangs often enough to be worth retrying:
+          # two runs in one afternoon were marked failed for it, with no
+          # output and nothing wrong with the code.
+          for attempt in 1 2 3; do
+            sudo apt-get update -qq && \
+              sudo apt-get install -y --no-install-recommends \
+                gcc-14 libpcre2-dev && break
+            echo "apt attempt $attempt failed, retrying"
+            sleep 10
+          done
+          # A missing package must not look like a build failure.
+          command -v cmake >/dev/null || { echo '::error::apt never succeeded'; exit 1; }
 
       # AddressSanitizer catches what C lets you do quietly: reading freed memory,
       # writing past a buffer, leaking. It found a heap-use-after-free in this
@@ -117,6 +136,64 @@ jobs:
           done
           exit "$fail"
 
+  fuzz:
+    name: fuzz
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # libclang-rt-19-dev is the part people forget. The clang-19 package does
+      # not carry the sanitizer runtime archives, so linking anything with
+      # -fsanitize fails with "cannot find libclang_rt.asan.a" and it looks like
+      # a code problem rather than a missing package.
+      - name: Install clang, its sanitizer runtimes, and PCRE2
+        run: |
+          # apt on the runners hangs often enough to be worth retrying:
+          # two runs in one afternoon were marked failed for it, with no
+          # output and nothing wrong with the code.
+          for attempt in 1 2 3; do
+            sudo apt-get update -qq && \
+              sudo apt-get install -y --no-install-recommends \
+                clang-19 libclang-rt-19-dev libpcre2-dev && break
+            echo "apt attempt $attempt failed, retrying"
+            sleep 10
+          done
+          # A missing package must not look like a build failure.
+          command -v cmake >/dev/null || { echo '::error::apt never succeeded'; exit 1; }
+
+      # libFuzzer ships with clang, not gcc. The two targets drive the functions
+      # that parse bytes this project did not write: the base64 decoder and the
+      # vocabulary parser.
+      #
+      # A minute each is not a fuzzing campaign, it is a regression gate. It
+      # re-runs the committed corpus, which includes every input that has ever
+      # crashed these functions, and then explores from there. The first real
+      # run found a rank parser that accepted the letter q as zero and an arena
+      # that invalidated every pointer it had handed out.
+      - name: Build the fuzz targets
+        run: |
+          cmake -S . -B fz -DCMAKE_C_COMPILER=clang-19 -DTIKTOKEN_FUZZ=ON
+          cmake --build fz -j"$(nproc)"
+
+      - name: Fuzz the vocabulary parser
+        run: ./fz/fuzz_vocab -max_total_time=60 -print_final_stats=1 fuzz/corpus/vocab
+
+      - name: Fuzz the base64 decoder
+        run: ./fz/fuzz_base64 -max_total_time=60 -print_final_stats=1 fuzz/corpus/base64
+
+      # A crash leaves an artifact behind. Keep it, because the input is the bug
+      # report and it is the thing that becomes a corpus entry.
+      - name: Keep any crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: |
+            crash-*
+            leak-*
+            timeout-*
+          if-no-files-found: ignore
+
   reference:
     name: vs Python tiktoken
     runs-on: ubuntu-24.04
@@ -125,8 +202,18 @@ jobs:
 
       - name: Install toolchain and PCRE2
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-14 libpcre2-dev
+          # apt on the runners hangs often enough to be worth retrying:
+          # two runs in one afternoon were marked failed for it, with no
+          # output and nothing wrong with the code.
+          for attempt in 1 2 3; do
+            sudo apt-get update -qq && \
+              sudo apt-get install -y --no-install-recommends \
+                gcc-14 libpcre2-dev && break
+            echo "apt attempt $attempt failed, retrying"
+            sleep 10
+          done
+          # A missing package must not look like a build failure.
+          command -v cmake >/dev/null || { echo '::error::apt never succeeded'; exit 1; }
 
       - uses: actions/setup-python@v5
         with:

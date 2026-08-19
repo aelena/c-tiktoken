@@ -97,6 +97,41 @@ target_link_libraries(test_reference_batch PRIVATE tiktoken)
 add_test(NAME reference_batch COMMAND test_reference_batch)
 set_tests_properties(reference_batch PROPERTIES SKIP_RETURN_CODE 77)
 
+# Fuzz targets
+#
+# Off by default and clang-only: libFuzzer ships with clang, not gcc. The targets
+# link the library and let libFuzzer drive the two functions that parse bytes this
+# project did not write.
+#
+#     cmake -S . -B fz -DCMAKE_C_COMPILER=clang-19 -DTIKTOKEN_FUZZ=ON
+#     cmake --build fz
+#     ./fz/fuzz_vocab -max_total_time=60 fuzz/corpus/vocab
+option(TIKTOKEN_FUZZ "Build the libFuzzer targets (requires clang)" OFF)
+
+if(TIKTOKEN_FUZZ)
+    if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "TIKTOKEN_FUZZ needs clang; libFuzzer does not ship with gcc.")
+    endif()
+
+    # The library itself has to carry the coverage instrumentation, not just the
+    # harness. Without this libFuzzer sees coverage only inside the fuzz target,
+    # gets no signal from the code under test, and degenerates into random input
+    # generation: thirty million executions at a coverage of 4 features, which
+    # looks like throughput and is worth nothing.
+    target_compile_options(tiktoken PRIVATE
+        -fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer -g)
+    target_link_options(tiktoken PUBLIC -fsanitize=address,undefined)
+
+    foreach(target fuzz_base64 fuzz_vocab)
+        add_executable(${target} fuzz/${target}.c)
+        target_link_libraries(${target} PRIVATE tiktoken)
+        target_compile_options(${target} PRIVATE
+            -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer -g)
+        target_link_options(${target} PRIVATE
+            -fsanitize=fuzzer,address,undefined)
+    endforeach()
+endif()
+
 # Examples
 add_executable(count_tokens examples/count_tokens.c)
 target_link_libraries(count_tokens PRIVATE tiktoken)

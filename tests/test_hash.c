@@ -63,7 +63,7 @@ static int tests_failed = 0;
 static void test_arena_basic(void) {
     TEST("arena: allocate and use");
     Arena a = arena_new(256);
-    ASSERT_TRUE(a.base != nullptr);
+    ASSERT_TRUE(a.blocks != nullptr);
 
     uint8_t *p1 = arena_push(&a, 32);
     ASSERT_TRUE(p1 != nullptr);
@@ -95,7 +95,54 @@ static void test_arena_grow(void) {
         uint8_t *p = arena_push(&a, 16);
         ASSERT_TRUE(p != nullptr);
     }
-    ASSERT_TRUE(a.cap >= 1600);
+    ASSERT_TRUE(a.total >= 1600);
+    arena_free(&a);
+    PASS();
+}
+
+static void test_arena_pointers_survive_growth(void) {
+    TEST("arena: earlier pointers survive later growth");
+
+    // The bug this catches: the arena used to be a single block grown with
+    // realloc, so allocating enough to force growth moved everything already
+    // handed out. Both hash maps borrow their key bytes from the arena, so the
+    // consequence was two maps full of dangling pointers, and it only stayed
+    // hidden because vocab_load_mem pre-sizes the arena well enough that the
+    // real vocabulary never grows it. A fuzzer found it on a file with longer
+    // tokens.
+    //
+    // Deliberately start small so growth is unavoidable.
+    Arena a = arena_new(32);
+    ASSERT_TRUE(a.blocks != nullptr);
+
+    enum { N = 200, LEN = 16 };
+    uint8_t *ptrs[N];
+
+    for (int i = 0; i < N; i++) {
+        uint8_t pattern[LEN];
+        for (int j = 0; j < LEN; j++) pattern[j] = (uint8_t)(i * 7 + j);
+        ptrs[i] = arena_push_bytes(&a, pattern, LEN);
+        ASSERT_TRUE(ptrs[i] != nullptr);
+    }
+
+    // Every pointer from before the growth must still hold what was written.
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < LEN; j++) {
+            if (ptrs[i][j] != (uint8_t)(i * 7 + j)) {
+                arena_free(&a);
+                FAIL("an earlier arena allocation moved or was corrupted");
+            }
+        }
+    }
+
+    // And they must all be distinct regions.
+    for (int i = 1; i < N; i++) {
+        if (ptrs[i] == ptrs[i - 1]) {
+            arena_free(&a);
+            FAIL("arena returned the same pointer twice");
+        }
+    }
+
     arena_free(&a);
     PASS();
 }
@@ -295,6 +342,7 @@ int main(void) {
     test_arena_basic();
     test_arena_push_bytes();
     test_arena_grow();
+    test_arena_pointers_survive_growth();
     test_arena_reset();
 
     test_b2i_basic();
