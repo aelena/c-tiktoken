@@ -97,6 +97,23 @@ target_link_libraries(test_reference_batch PRIVATE tiktoken)
 add_test(NAME reference_batch COMMAND test_reference_batch)
 set_tests_properties(reference_batch PROPERTIES SKIP_RETURN_CODE 77)
 
+# Probe measurement
+#
+# Chapter 3 quotes average probe counts. This is what produces them, so the
+# chapter can cite a measurement of this implementation rather than a number
+# from a textbook about a different one.
+#
+#     cmake -S . -B pm -DTIKTOKEN_PROBE_STATS=ON
+#     cmake --build pm --target measure_probes
+#     ./pm/measure_probes data/cl100k_base.tiktoken
+option(TIKTOKEN_PROBE_STATS "Build the probe counter and its measurement tool" OFF)
+
+if(TIKTOKEN_PROBE_STATS)
+    target_compile_definitions(tiktoken PUBLIC TIKTOKEN_PROBE_STATS)
+    add_executable(measure_probes tools/measure_probes.c)
+    target_link_libraries(measure_probes PRIVATE tiktoken)
+endif()
+
 # Fuzz targets
 #
 # Off by default and clang-only: libFuzzer ships with clang, not gcc. The targets

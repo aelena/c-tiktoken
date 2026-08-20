@@ -31,6 +31,24 @@
 // safety. Each entry stores a key, a value, a cached hash, and a
 // probe distance (PSL = Probe Sequence Length) for Robin Hood insertion.
 
+// ── Probe counting, for measurement only ──────────────────────────────
+//
+// Chapter 3 quotes average probe counts at a given load factor. Those numbers
+// used to be asserted rather than measured. Compiling with
+// -DTIKTOKEN_PROBE_STATS turns on these counters so tools/measure_probes.c can
+// produce them from this implementation rather than from a textbook, and the
+// chapter can cite a measurement.
+//
+// The counters cost a increment per probe and are absent from an ordinary build.
+
+#ifdef TIKTOKEN_PROBE_STATS
+extern unsigned long long tiktoken_probe_hits;
+extern unsigned long long tiktoken_probe_misses;
+extern unsigned long long tiktoken_probe_slots_hit;
+extern unsigned long long tiktoken_probe_slots_miss;
+void tiktoken_probe_reset(void);
+#endif
+
 // ── Map: Bytes → uint32_t (for encoding: token bytes → rank) ──────────
 
 typedef struct {
