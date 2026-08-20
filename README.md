@@ -24,8 +24,9 @@ vocabulary, in about 1,800 lines of C23 with one dependency.
 - **Vocabulary loading** from a file or a memory buffer. Base64 and rank parsing,
   with malformed lines skipped rather than fatal.
 - **Robin Hood hash maps** in both directions, bytes to rank and rank to bytes.
-  At the 70% load factor the table grows at, that is ~1.37 probes for a hit and
-  ~2.37 for a miss.
+  Loaded with the real vocabulary the table sits at 38% occupancy and measures 1.30
+  probes on a hit, 1.50 on a miss, worst case 8. Measured, not quoted: the tool
+  that produces those numbers is `tools/measure_probes.c`.
 - **Arena allocation** for token bytes, so a 100K-entry vocabulary is one
   allocation and one `free` rather than 100K of each.
 - **PCRE2 pre-tokenization** with the cl100k, o200k and p50k patterns, each one

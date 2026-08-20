@@ -8,6 +8,35 @@
 
 #include "tiktoken/hash.h"
 
+#ifdef TIKTOKEN_PROBE_STATS
+unsigned long long tiktoken_probe_hits = 0;
+unsigned long long tiktoken_probe_misses = 0;
+unsigned long long tiktoken_probe_slots_hit = 0;
+unsigned long long tiktoken_probe_slots_miss = 0;
+
+void tiktoken_probe_reset(void) {
+    tiktoken_probe_hits = 0;
+    tiktoken_probe_misses = 0;
+    tiktoken_probe_slots_hit = 0;
+    tiktoken_probe_slots_miss = 0;
+}
+
+// A probe is one slot examined, so a lookup that finds its key in the slot it
+// hashed to counts as one.
+#define PROBE_END(found, slots)                                    \
+    do {                                                           \
+        if (found) {                                               \
+            tiktoken_probe_hits++;                                 \
+            tiktoken_probe_slots_hit += (unsigned long long)(slots);\
+        } else {                                                   \
+            tiktoken_probe_misses++;                               \
+            tiktoken_probe_slots_miss += (unsigned long long)(slots);\
+        }                                                          \
+    } while (0)
+#else
+#define PROBE_END(found, slots) ((void)0)
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -204,13 +233,16 @@ bool b2i_get(const B2iMap *m, Bytes key, uint32_t *out) {
     // Walk forward. Thanks to Robin Hood, we can stop early: if the
     // current slot's PSL is less than what ours would be at this
     // position, the key cannot be further ahead.
-    for (int32_t psl = 0; m->slots[idx].psl >= psl; psl++) {
+    int32_t psl = 0;
+    for (; m->slots[idx].psl >= psl; psl++) {
         if (m->slots[idx].hash == h && bytes_equal(m->slots[idx].key, key)) {
             if (out != nullptr) *out = m->slots[idx].value;
+            PROBE_END(true, psl + 1);
             return true;
         }
         idx = (idx + 1) & (m->cap - 1);
     }
+    PROBE_END(false, psl + 1);
     return false;
 }
 

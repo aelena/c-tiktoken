@@ -239,13 +239,73 @@ We grow the table when occupancy exceeds 70%:
 static constexpr double MAX_LOAD = 0.70;
 ```
 
-At 70% load, Robin Hood hashing gives:
-- Average successful probe: ~1.37
-- Average failed probe: ~2.37
+These are the numbers, measured with `tools/measure_probes.c` against this
+implementation rather than quoted from a textbook about a different one. A probe
+is one slot examined, so a lookup that finds its key in the slot it hashed to
+counts as one. The table is held at a fixed capacity of 2^20 so that the load
+factor is what it says.
 
-These are excellent numbers, almost as good as a perfect hash function.
-At 90% load, probes would increase to ~3.0 and ~10.0, which is why we
-keep the threshold moderate.
+| Load | Hit | Miss | Worst case |
+|---:|---:|---:|---:|
+| 10% | 1.06 | 1.11 | 4 |
+| 20% | 1.13 | 1.22 | 6 |
+| 30% | 1.22 | 1.36 | 7 |
+| 40% | 1.34 | 1.53 | 10 |
+| 50% | 1.50 | 1.75 | 11 |
+| 60% | 1.74 | 2.05 | 14 |
+| 70% | 2.18 | 2.53 | 18 |
+
+Three things in that table are worth more than the averages.
+
+**Robin Hood does not improve the average hit.** At 70% the measured 2.18 is
+almost exactly what plain linear probing predicts, `(1 + 1/(1-a))/2`, which comes
+to 2.17. That is not a disappointment, it is what the algorithm does: Robin Hood
+redistributes displacement, it does not reduce the total. The sum of all probe
+sequence lengths is fixed by the hash function and the load factor. All Robin
+Hood decides is who carries it.
+
+**Where it pays is the miss.** Linear probing's unsuccessful search is
+`(1 + 1/(1-a)^2)/2`, which at 70% is 6.06. We measured 2.53, better than two
+times. That gap is the early exit in `b2i_get`: because every entry is at least
+as displaced as anything that hashed before it, a probe that reaches a slot less
+displaced than the searcher would be can stop, and it does not have to walk to
+the end of the run. A tokenizer misses constantly, on every byte sequence that is
+not a token, so this is the column that matters.
+
+**And the worst case is the real argument.** Eighteen probes as the longest
+sequence in a table of a million entries at 70% occupancy. Plain linear probing at
+the same load produces outliers in the hundreds, because nothing stops one
+unlucky key from inheriting a whole cluster. Robin Hood caps the tail. For a
+tokenizer that is a latency argument rather than a throughput one: the average
+lookup was never the problem, the occasional 200-probe lookup inside a hot loop
+was.
+
+### What the load factor actually is
+
+The threshold is 70%, but the table never sits there. It doubles on crossing it,
+so occupancy oscillates between 35% and 70% and spends most of its life in the
+lower half of that range. For the real vocabulary:
+
+```
+entries 100256, capacity 262144, load 38.2%
+average probes: 1.30 on a hit, 1.50 on a miss, worst case 8
+```
+
+Those are the operative numbers for this library. Not 70%, which is a ceiling
+rather than a condition.
+
+An earlier draft of this chapter claimed 1.37 probes on a hit at 70% load. The
+measurement says 2.18. The 1.37 is close to the 40% row, which is roughly where
+the real vocabulary sits, so the number was most likely right about the library
+and mislabelled about the load factor. It is an easy mistake and it is the reason
+`tools/measure_probes.c` now exists: a performance claim in a book should be
+reproducible with one command by whoever is reading it.
+
+    cmake -S . -B pm -DTIKTOKEN_PROBE_STATS=ON
+    cmake --build pm --target measure_probes
+    ./pm/measure_probes data/cl100k_base.tiktoken
+
+The counters compile to nothing unless that flag is set.
 
 Growth means allocating a new array of double the size and re-inserting
 all entries. This is O(n) but happens infrequently: amortized O(1)
