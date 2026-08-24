@@ -432,7 +432,25 @@ def square_crop(page):
         lambda v: 255 if v < INK_THRESHOLD else 0
     ).getbbox() or (0, 0, width, height)
 
-    side = max(min(width, height), ink[3] - ink[1])
+    # Locating the design by what is darker than the page assumes a light page
+    # with dark marks on it, which is true of this cover and not of a full-bleed
+    # one. On a dark full-bleed cover the background itself is below the
+    # threshold, the whole page reads as ink, the ink is taller than the page is
+    # wide, and the padding branch below fires: it returns a canvas wider than
+    # the page with the design floating between two bars of whatever colour the
+    # corner pixel happens to be. Measured on a 1700x2200 page with a 16px paper
+    # margin, that was a 2169x2169 image with 250px of white down each side.
+    #
+    # So detect the case and centre on the paper instead, which is the right
+    # answer when the design covers all of it. A cream cover is unaffected: it
+    # produces the same crop as before.
+    ink_area = (ink[2] - ink[0]) * (ink[3] - ink[1])
+    full_bleed = ink_area > 0.9 * width * height
+    if full_bleed:
+        ink = (0, 0, width, height)
+
+    side = (min(width, height) if full_bleed
+            else max(min(width, height), ink[3] - ink[1]))
     centre = (ink[1] + ink[3]) / 2
     top = max(0, min(round(centre - side / 2), max(0, height - side)))
 
