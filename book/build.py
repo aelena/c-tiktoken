@@ -36,6 +36,13 @@ TUTORIAL_DIR = REPO_DIR / "tutorial"
 OUTPUT = BOOK_DIR / "Build-a-Tokenizer-in-C.pdf"
 COVER = BOOK_DIR / "cover.png"
 
+# Gumroad shows a square image in its library, discover and profile pages, at
+# 600x600 or more, so the portrait page alone is not enough.
+COVER_SQUARE = BOOK_DIR / "cover-square.png"
+
+# Anything darker than the cream ground counts as ink when locating the design.
+INK_THRESHOLD = 240
+
 # A4 at 200 dpi is 1654 x 2339, which is above what Gumroad and LinkedIn
 # downscale from and still a small file, because the page is nearly flat colour.
 COVER_DPI = 200
@@ -251,6 +258,34 @@ img { max-width: 100%; page-break-inside: avoid; }
 """
 
 
+def square_crop(page):
+    """A square version of the page, centred on the design instead of the paper.
+
+    The page is A4 and its lower third is empty, so centring on the paper would
+    leave the design in the top half with a band of nothing under it. Centring on
+    the ink keeps the full page width, which means the left margin and the
+    horizontal composition survive untouched.
+
+    Written as a paste onto a square canvas rather than a crop so that a cover
+    taller than it is wide is padded instead of being silently clipped.
+    """
+    from PIL import Image
+
+    width, height = page.size
+    ink = page.convert("L").point(
+        lambda v: 255 if v < INK_THRESHOLD else 0
+    ).getbbox() or (0, 0, width, height)
+
+    side = max(min(width, height), ink[3] - ink[1])
+    centre = (ink[1] + ink[3]) / 2
+    top = max(0, min(round(centre - side / 2), max(0, height - side)))
+
+    band = page.crop((0, top, width, min(height, top + side)))
+    canvas = Image.new("RGB", (side, side), page.getpixel((0, 0)))
+    canvas.paste(band, ((side - band.width) // 2, (side - band.height) // 2))
+    return canvas
+
+
 def render_cover(pdf_path: Path) -> None:
     """Rasterise page 1 of the finished PDF into a cover image.
 
@@ -275,6 +310,11 @@ def render_cover(pdf_path: Path) -> None:
     width, height = image.size
     size_kb = COVER.stat().st_size / 1024
     print(f"  {COVER.name}, {width}x{height}, {size_kb:.0f} KB")
+
+    square = square_crop(image)
+    square.save(COVER_SQUARE)
+    size_kb = COVER_SQUARE.stat().st_size / 1024
+    print(f"  {COVER_SQUARE.name}, {square.width}x{square.height}, {size_kb:.0f} KB")
 
 
 def main() -> None:
