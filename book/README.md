@@ -11,11 +11,19 @@ pip install -r requirements.txt
 python build.py
 ```
 
-Output: `Build-a-Tokenizer-in-C.pdf`, 62 pages, and `cover.png`, which is
-page 1 of that PDF rasterised at 200 dpi (1654 x 2339), plus
-`cover-square.png` at 1654 x 1654 for shops that want a square thumbnail.
-Gumroad asks for one at 600 x 600 or more for its library, discover and
-profile pages.
+Output, four files from one command:
+
+| File | What it is |
+|---|---|
+| `Build-a-Tokenizer-in-C.pdf` | The typeset book, 62 pages |
+| `Build-a-Tokenizer-in-C.epub` | The same book, reflowable, for phones and e-readers |
+| `cover.png` | Page 1 of the PDF at 200 dpi, 1654 x 2339 |
+| `cover-square.png` | The same cover cropped square, 1654 x 1654 |
+
+The square one exists because Gumroad wants a square image at 600 x 600 or
+more for its library, discover and profile pages. The EPUB exists because a
+PDF is a fixed page size, which on a phone means pinching and panning and on
+an e-reader means a page that does not match the screen.
 
 Both come from the finished PDF rather than being rendered separately, so the
 picture a shop or a social card shows is the same pixels as page 1 and cannot
@@ -75,6 +83,7 @@ The stylesheet asks for Georgia and Consolas and falls back to Liberation and De
 | `requirements.txt` | Python dependencies |
 | `cover.png` | Generated. Page 1 at 200 dpi, for shop listings and social cards |
 | `cover-square.png` | Generated. The same page cropped square, for shop thumbnails |
+| `Build-a-Tokenizer-in-C.epub` | Generated. One file per section, cover.png as the cover |
 
 Chapters are picked up automatically from `../tutorial/chapter*.md` in filename order. Adding a chapter means adding a file; nothing here needs editing except the contents list in the front matter.
 

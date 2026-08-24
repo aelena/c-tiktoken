@@ -4,3 +4,6 @@ weasyprint==63.1
 # matters here: the AGPL alternative would not sit well in an MIT repository.
 pypdfium2==5.0.0
 pillow==11.3.0
+# Builds the EPUB. Pure Python, so the whole pipeline stays a pip install away
+# on any machine that can already produce the PDF.
+ebooklib==0.18
