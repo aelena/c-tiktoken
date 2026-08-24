@@ -40,6 +40,14 @@ COVER = BOOK_DIR / "cover.png"
 # 600x600 or more, so the portrait page alone is not enough.
 COVER_SQUARE = BOOK_DIR / "cover-square.png"
 
+# Gumroad's own advice: buyers read on phones and e-readers, and a PDF is a
+# fixed page size on both. EPUB reflows.
+EPUB = BOOK_DIR / "Build-a-Tokenizer-in-C.epub"
+
+# A stable identifier, so a reader that already has an earlier copy treats a new
+# build as the same book rather than a second one in the library.
+EPUB_ID = "urn:uuid:6f1c4d18-2a3b-4f5e-9c0d-7b8a1e2f3c4d"
+
 # Anything darker than the cream ground counts as ink when locating the design.
 INK_THRESHOLD = 240
 
@@ -52,27 +60,53 @@ COVER_DPI = 200
 PAGE_BREAK_MARKER = "\\newpage"
 
 
-def collect_markdown() -> str:
-    """Front matter, then the chapters in filename order, then the colophon."""
-    parts: list[str] = []
+def first_heading(markdown_text: str, fallback: str) -> str:
+    """The section's own H1, which is what an EPUB table of contents needs."""
+    for line in markdown_text.splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()
+    return fallback
+
+
+def collect_sections() -> list[tuple[str, str, bool]]:
+    """Front matter, then the chapters in filename order, then the colophon.
+
+    Returns (title, markdown, break_before) so that both outputs can be built
+    from one traversal. The flag exists because the PDF puts a page break before
+    every chapter and none before the colophon, and the EPUB needs the same
+    boundaries as separate files rather than as markers in one string.
+    """
+    sections: list[tuple[str, str, bool]] = []
 
     front = BOOK_DIR / "00-front-matter.md"
     if not front.exists():
         sys.exit(f"Missing {front}")
-    parts.append(front.read_text(encoding="utf-8"))
+    front_text = front.read_text(encoding="utf-8")
+    sections.append((first_heading(front_text, "Front matter"), front_text, False))
 
     chapters = sorted(TUTORIAL_DIR.glob("chapter*.md"))
     if not chapters:
         sys.exit(f"No chapters found in {TUTORIAL_DIR}")
     for chapter in chapters:
-        parts.append(PAGE_BREAK_MARKER)
-        parts.append(chapter.read_text(encoding="utf-8"))
+        text = chapter.read_text(encoding="utf-8")
+        sections.append((first_heading(text, chapter.stem), text, True))
     print(f"  {len(chapters)} chapters")
 
     colophon = BOOK_DIR / "99-colophon.md"
     if colophon.exists():
-        parts.append(colophon.read_text(encoding="utf-8"))
+        text = colophon.read_text(encoding="utf-8")
+        sections.append((first_heading(text, "Colophon"), text, False))
 
+    return sections
+
+
+def assemble_markdown(sections: list[tuple[str, str, bool]]) -> str:
+    """One string for the typesetter, with the page-break markers put back."""
+    parts: list[str] = []
+    for _, text, break_before in sections:
+        if break_before:
+            parts.append(PAGE_BREAK_MARKER)
+        parts.append(text)
     return "\n\n".join(parts)
 
 
@@ -258,6 +292,119 @@ img { max-width: 100%; page-break-inside: avoid; }
 """
 
 
+EPUB_CSS = """
+/* Deliberately not the print stylesheet. That one is built on millimetres and
+   @page rules, which mean nothing on a device whose page size is decided by the
+   reader's font setting. Sizes here are relative so the reader stays in charge. */
+body {
+    font-family: Georgia, serif;
+    line-height: 1.5;
+    margin: 0 1em;
+}
+h1 {
+    font-size: 1.5em;
+    font-weight: normal;
+    margin: 1em 0 0.6em;
+    padding-bottom: 0.2em;
+    border-bottom: 1px solid #d8d8d4;
+}
+h2 { font-size: 1.2em; margin: 1.4em 0 0.4em; }
+h3 { font-size: 1.05em; margin: 1.1em 0 0.3em; }
+p { margin: 0 0 0.7em; }
+code {
+    font-family: "DejaVu Sans Mono", Consolas, monospace;
+    font-size: 0.85em;
+    background: #f2f1ee;
+}
+pre {
+    font-family: "DejaVu Sans Mono", Consolas, monospace;
+    font-size: 0.75em;
+    line-height: 1.35;
+    background: #f7f6f3;
+    border-left: 2px solid #c8c6c0;
+    padding: 0.6em 0.8em;
+    margin: 0.8em 0;
+    /* Code cannot reflow, so let it scroll rather than crop on a narrow screen. */
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+pre code { background: none; font-size: 1em; }
+blockquote {
+    margin: 0.8em 0 0.8em 1em;
+    padding-left: 0.8em;
+    border-left: 2px solid #c8c6c0;
+    color: #555;
+    font-style: italic;
+}
+table { border-collapse: collapse; width: 100%; font-size: 0.85em; margin: 0.8em 0; }
+th, td { border: 1px solid #d8d8d4; padding: 0.25em 0.4em; text-align: left; }
+th { background: #f2f1ee; }
+a { color: #1a1a1a; }
+hr { border: none; border-top: 1px solid #d8d8d4; margin: 1.2em 0; }
+"""
+
+
+def render_epub(sections, to_html) -> None:
+    """Write the EPUB, one file per section, with cover.png as the cover.
+
+    A PDF is a fixed page size, which on a phone means pinching and panning, and
+    on an e-reader means a page that does not match the screen. EPUB reflows.
+    The cover is the PNG rasterised from page 1, so all three artifacts show the
+    same cover by construction.
+    """
+    try:
+        from ebooklib import epub
+    except ImportError:
+        print(f"  {EPUB.name} skipped: ebooklib is not installed.")
+        print("    pip install -r requirements.txt")
+        return
+
+    book = epub.EpubBook()
+    book.set_identifier(EPUB_ID)
+    book.set_title(TITLE)
+    book.set_language("en")
+    book.add_author(AUTHOR)
+    book.add_metadata("DC", "description", SUBTITLE)
+
+    if COVER.exists():
+        book.set_cover("cover.png", COVER.read_bytes())
+    else:
+        print(f"  {EPUB.name}: no {COVER.name} to use as a cover")
+
+    css = epub.EpubItem(
+        uid="style",
+        file_name="style/main.css",
+        media_type="text/css",
+        content=EPUB_CSS,
+    )
+    book.add_item(css)
+
+    items = []
+    for index, (title, markdown_text, _) in enumerate(sections, start=1):
+        # The markdown already opens with its own H1, so the title is metadata
+        # for the table of contents and is not repeated in the text.
+        body = to_html(markdown_text.replace(PAGE_BREAK_MARKER, ""))
+        item = epub.EpubHtml(
+            title=title,
+            file_name=f"section{index:02d}.xhtml",
+            lang="en",
+        )
+        item.content = body
+        item.add_item(css)
+        book.add_item(item)
+        items.append(item)
+
+    book.toc = tuple(items)
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    book.spine = ["cover", "nav"] + items
+
+    epub.write_epub(str(EPUB), book)
+    size_kb = EPUB.stat().st_size / 1024
+    print(f"  {EPUB.name}, {len(items)} sections, {size_kb:.0f} KB")
+
+
 def square_crop(page):
     """A square version of the page, centred on the design instead of the paper.
 
@@ -330,12 +477,13 @@ def main() -> None:
         )
 
     print(f"Assembling from {TUTORIAL_DIR}...")
-    md = collect_markdown()
+    sections = collect_sections()
+    md = assemble_markdown(sections)
 
-    html_body = markdown(
-        md,
-        extensions=["extra", "tables", "fenced_code", "sane_lists"],
-    )
+    def to_html(text: str) -> str:
+        return markdown(text, extensions=["extra", "tables", "fenced_code", "sane_lists"])
+
+    html_body = to_html(md)
     # Translate the front matter's page-break markers.
     html_body = html_body.replace(
         f"<p>{PAGE_BREAK_MARKER}</p>", '<div class="page-break"></div>'
@@ -381,6 +529,7 @@ def main() -> None:
     print(f"  {OUTPUT.name}, {size_kb:.0f} KB")
 
     render_cover(OUTPUT)
+    render_epub(sections, to_html)
 
 
 if __name__ == "__main__":

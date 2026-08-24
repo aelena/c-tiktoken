@@ -16,3 +16,7 @@ book/*.pdf
 # Derived from page 1 of that PDF, so equally a build artifact.
 book/cover.png
 book/cover-square.png
+book/*.epub
+
+# Byte-compiled Python, which the build tooling leaves behind.
+__pycache__/
