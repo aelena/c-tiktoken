@@ -34,6 +34,11 @@ BOOK_DIR = Path(__file__).parent
 REPO_DIR = BOOK_DIR.parent
 TUTORIAL_DIR = REPO_DIR / "tutorial"
 OUTPUT = BOOK_DIR / "Build-a-Tokenizer-in-C.pdf"
+COVER = BOOK_DIR / "cover.png"
+
+# A4 at 200 dpi is 1654 x 2339, which is above what Gumroad and LinkedIn
+# downscale from and still a small file, because the page is nearly flat colour.
+COVER_DPI = 200
 
 # WeasyPrint has no \newpage; the front matter uses it as a marker and we
 # translate it into a page-breaking element.
@@ -246,6 +251,32 @@ img { max-width: 100%; page-break-inside: avoid; }
 """
 
 
+def render_cover(pdf_path: Path) -> None:
+    """Rasterise page 1 of the finished PDF into a cover image.
+
+    Deliberately taken from the PDF rather than re-rendered from the cover HTML.
+    The image a shop or a social card shows is then the same pixels as page 1 by
+    construction, and cannot drift from the book when the cover changes.
+    """
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:
+        print(f"  {COVER.name} skipped: pypdfium2 is not installed.")
+        print("    pip install -r requirements.txt")
+        return
+
+    doc = pdfium.PdfDocument(str(pdf_path))
+    try:
+        image = doc[0].render(scale=COVER_DPI / 72).to_pil()
+    finally:
+        doc.close()
+
+    image.save(COVER)
+    width, height = image.size
+    size_kb = COVER.stat().st_size / 1024
+    print(f"  {COVER.name}, {width}x{height}, {size_kb:.0f} KB")
+
+
 def main() -> None:
     try:
         from markdown import markdown
@@ -308,6 +339,8 @@ def main() -> None:
     HTML(string=html).write_pdf(OUTPUT, stylesheets=[WeasyCSS(string=CSS)])
     size_kb = OUTPUT.stat().st_size / 1024
     print(f"  {OUTPUT.name}, {size_kb:.0f} KB")
+
+    render_cover(OUTPUT)
 
 
 if __name__ == "__main__":
