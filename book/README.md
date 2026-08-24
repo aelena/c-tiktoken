@@ -12,10 +12,18 @@ python build.py
 ```
 
 Output: `Build-a-Tokenizer-in-C.pdf`, 57 pages, and `cover.png`, which is
-page 1 of that PDF rasterised at 200 dpi (1654 x 2339). The cover image is
-taken from the finished PDF rather than rendered separately, so the picture a
-shop or a social card shows is the same pixels as page 1 and cannot drift
-from the book.
+page 1 of that PDF rasterised at 200 dpi (1654 x 2339), plus
+`cover-square.png` at 1654 x 1654 for shops that want a square thumbnail.
+Gumroad asks for one at 600 x 600 or more for its library, discover and
+profile pages.
+
+Both come from the finished PDF rather than being rendered separately, so the
+picture a shop or a social card shows is the same pixels as page 1 and cannot
+drift from the book. The square one is centred on the design rather than on
+the paper: the page is A4 and its lower third is empty, so centring on the
+paper would leave the title up top with a band of nothing under it. It keeps
+the full page width, so the left margin and the horizontal composition are
+untouched.
 
 WeasyPrint needs system libraries beyond the Python packages (pango, cairo, gdk-pixbuf). On Debian/Ubuntu:
 
@@ -38,6 +46,7 @@ The stylesheet asks for Georgia and Consolas, falling back to Liberation and Dej
 | `build.py` | Assembly and typesetting. The stylesheet lives here as a string |
 | `requirements.txt` | Python dependencies |
 | `cover.png` | Generated. Page 1 at 200 dpi, for shop listings and social cards |
+| `cover-square.png` | Generated. The same page cropped square, for shop thumbnails |
 
 Chapters are picked up automatically from `../tutorial/chapter*.md` in filename order. Adding a chapter means adding a file; nothing here needs editing except the contents list in the front matter.
 
