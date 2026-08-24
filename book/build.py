@@ -295,7 +295,15 @@ img { max-width: 100%; page-break-inside: avoid; }
 EPUB_CSS = """
 /* Deliberately not the print stylesheet. That one is built on millimetres and
    @page rules, which mean nothing on a device whose page size is decided by the
-   reader's font setting. Sizes here are relative so the reader stays in charge. */
+   reader's font setting.
+
+   Every colour here is a translucent neutral, and nothing sets a background
+   without letting the text colour come from the reader. An earlier version gave
+   code blocks an opaque near-white background and left the text inherited: in
+   Calibre's dark theme the reader supplied its light foreground, the background
+   stayed near-white, and every code block became unreadable. A translucent grey
+   composes over whatever the reader's page colour is, so it darkens a light page
+   and lightens a dark one and can never fight the theme. */
 body {
     font-family: Georgia, serif;
     line-height: 1.5;
@@ -306,7 +314,7 @@ h1 {
     font-weight: normal;
     margin: 1em 0 0.6em;
     padding-bottom: 0.2em;
-    border-bottom: 1px solid #d8d8d4;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.4);
 }
 h2 { font-size: 1.2em; margin: 1.4em 0 0.4em; }
 h3 { font-size: 1.05em; margin: 1.1em 0 0.3em; }
@@ -314,34 +322,35 @@ p { margin: 0 0 0.7em; }
 code {
     font-family: "DejaVu Sans Mono", Consolas, monospace;
     font-size: 0.85em;
-    background: #f2f1ee;
+    background: rgba(128, 128, 128, 0.16);
+    padding: 0 0.15em;
+    border-radius: 0.15em;
 }
 pre {
     font-family: "DejaVu Sans Mono", Consolas, monospace;
     font-size: 0.75em;
     line-height: 1.35;
-    background: #f7f6f3;
-    border-left: 2px solid #c8c6c0;
+    background: rgba(128, 128, 128, 0.12);
+    border-left: 2px solid rgba(128, 128, 128, 0.45);
     padding: 0.6em 0.8em;
     margin: 0.8em 0;
-    /* Code cannot reflow, so let it scroll rather than crop on a narrow screen. */
+    /* Code cannot reflow, so let it wrap rather than crop on a narrow screen. */
     white-space: pre-wrap;
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
-pre code { background: none; font-size: 1em; }
+/* Inside a block the tint would stack on itself and the padding would double. */
+pre code { background: none; padding: 0; font-size: 1em; }
 blockquote {
     margin: 0.8em 0 0.8em 1em;
     padding-left: 0.8em;
-    border-left: 2px solid #c8c6c0;
-    color: #555;
+    border-left: 2px solid rgba(128, 128, 128, 0.45);
     font-style: italic;
 }
 table { border-collapse: collapse; width: 100%; font-size: 0.85em; margin: 0.8em 0; }
-th, td { border: 1px solid #d8d8d4; padding: 0.25em 0.4em; text-align: left; }
-th { background: #f2f1ee; }
-a { color: #1a1a1a; }
-hr { border: none; border-top: 1px solid #d8d8d4; margin: 1.2em 0; }
+th, td { border: 1px solid rgba(128, 128, 128, 0.4); padding: 0.25em 0.4em; text-align: left; }
+th { background: rgba(128, 128, 128, 0.14); }
+hr { border: none; border-top: 1px solid rgba(128, 128, 128, 0.4); margin: 1.2em 0; }
 """
 
 
