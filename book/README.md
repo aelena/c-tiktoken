@@ -11,7 +11,7 @@ pip install -r requirements.txt
 python build.py
 ```
 
-Output: `Build-a-Tokenizer-in-C.pdf`, 57 pages, and `cover.png`, which is
+Output: `Build-a-Tokenizer-in-C.pdf`, 62 pages, and `cover.png`, which is
 page 1 of that PDF rasterised at 200 dpi (1654 x 2339), plus
 `cover-square.png` at 1654 x 1654 for shops that want a square thumbnail.
 Gumroad asks for one at 600 x 600 or more for its library, discover and
@@ -33,9 +33,37 @@ sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.
 
 See the [WeasyPrint install docs](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html) for macOS and Windows.
 
+### Building on Windows
+
+Getting those libraries onto Windows means installing a GTK runtime and having
+it on `PATH`, and WeasyPrint fails at import if it is missing:
+
+```
+OSError: cannot load library 'libgobject-2.0-0'
+```
+
+Every release of this book so far was built in a container instead, which needs
+nothing installed on the host beyond Docker:
+
+```bash
+docker run --rm -v "$PWD:/work" -w /work/book python:3.12-slim sh -c '
+  apt-get update -qq
+  apt-get install -y -qq libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b       libcairo2 libgdk-pixbuf-2.0-0 fonts-dejavu
+  pip install -q -r requirements.txt
+  python build.py'
+```
+
+Prefix it with `MSYS_NO_PATHCONV=1` under Git Bash, or the `-v` and `-w` paths
+get rewritten on the way in.
+
+The container has no Georgia or Consolas, so the fallbacks are what ship: the
+released PDF embeds DejaVu Serif and DejaVu Sans Mono. That is worth knowing
+before switching to a native build, because it would change the typeface of
+every page including the cover.
+
 ### Fonts
 
-The stylesheet asks for Georgia and Consolas, falling back to Liberation and DejaVu. Building on Windows or macOS gives you the intended pair; building on a bare Linux box gives you the fallbacks, which are close enough that only the author will notice.
+The stylesheet asks for Georgia and Consolas and falls back to Liberation and DejaVu. A native build on Windows or macOS would give you the intended pair, but the container build above is what actually ships, so the released PDF is set in DejaVu. The two are close enough that only the author will notice, and the fallbacks are the reference: if you rebuild natively, expect the pages to reflow slightly.
 
 ## Layout
 
