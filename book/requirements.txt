@@ -1,2 +1,6 @@
 markdown==3.7
 weasyprint==63.1
+# Rasterises page 1 of the built PDF into cover.png. Apache-2.0 and BSD, which
+# matters here: the AGPL alternative would not sit well in an MIT repository.
+pypdfium2==5.0.0
+pillow==11.3.0

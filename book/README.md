@@ -11,7 +11,11 @@ pip install -r requirements.txt
 python build.py
 ```
 
-Output: `Build-a-Tokenizer-in-C.pdf`, around 54 pages.
+Output: `Build-a-Tokenizer-in-C.pdf`, 57 pages, and `cover.png`, which is
+page 1 of that PDF rasterised at 200 dpi (1654 x 2339). The cover image is
+taken from the finished PDF rather than rendered separately, so the picture a
+shop or a social card shows is the same pixels as page 1 and cannot drift
+from the book.
 
 WeasyPrint needs system libraries beyond the Python packages (pango, cairo, gdk-pixbuf). On Debian/Ubuntu:
 
@@ -33,6 +37,7 @@ The stylesheet asks for Georgia and Consolas, falling back to Liberation and Dej
 | `99-colophon.md` | Repository pointer, about the author, other titles |
 | `build.py` | Assembly and typesetting. The stylesheet lives here as a string |
 | `requirements.txt` | Python dependencies |
+| `cover.png` | Generated. Page 1 at 200 dpi, for shop listings and social cards |
 
 Chapters are picked up automatically from `../tutorial/chapter*.md` in filename order. Adding a chapter means adding a file; nothing here needs editing except the contents list in the front matter.
 

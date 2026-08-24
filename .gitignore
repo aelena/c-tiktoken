@@ -13,3 +13,5 @@ compile_commands.json
 
 # Built book — sold as the typeset convenience version; build it from book/ if you prefer
 book/*.pdf
+# Derived from page 1 of that PDF, so equally a build artifact.
+book/cover.png

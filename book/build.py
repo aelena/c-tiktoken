@@ -17,10 +17,28 @@ TITLE = "Build a Tokenizer in C"
 SUBTITLE = "OpenAI's BPE, from base64 to a working cl100k_base encoder"
 AUTHOR = "Antonio Elena"
 
+# The title, encoded by the encoder this book builds. Real cl100k_base output,
+# not decoration: note that "Tokenizer" costs two tokens and "C" costs one.
+# Regenerate with:
+#     python -c "import tiktoken; e=tiktoken.get_encoding('cl100k_base'); #                t=e.encode('Build a Tokenizer in C'); #                print([(e.decode([x]), x) for x in t])"
+TITLE_TOKENS = [
+    ("Build", 11313),
+    (" a", 264),
+    (" Token", 9857),
+    ("izer", 3213),
+    (" in", 304),
+    (" C", 356),
+]
+
 BOOK_DIR = Path(__file__).parent
 REPO_DIR = BOOK_DIR.parent
 TUTORIAL_DIR = REPO_DIR / "tutorial"
 OUTPUT = BOOK_DIR / "Build-a-Tokenizer-in-C.pdf"
+COVER = BOOK_DIR / "cover.png"
+
+# A4 at 200 dpi is 1654 x 2339, which is above what Gumroad and LinkedIn
+# downscale from and still a small file, because the page is nearly flat colour.
+COVER_DPI = 200
 
 # WeasyPrint has no \newpage; the front matter uses it as a marker and we
 # translate it into a page-breaking element.
@@ -100,6 +118,8 @@ body {
     line-height: 1.1;
     margin: 0 0 10mm 0;
     letter-spacing: -0.5pt;
+    border-bottom: none;
+    padding-bottom: 0;
 }
 .cover .rule {
     border: none;
@@ -112,7 +132,7 @@ body {
     font-size: 11pt;
     color: #555;
     line-height: 1.5;
-    margin: 0 0 55mm 0;
+    margin: 0 0 22mm 0;
 }
 .cover .author {
     font-family: Consolas, 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
@@ -120,6 +140,31 @@ body {
     letter-spacing: 1pt;
     text-transform: uppercase;
     color: #1a1a1a;
+}
+
+.cover .tokens {
+    border-collapse: collapse;
+    width: auto;
+    margin: 0 0 38mm 0;
+    font-family: Consolas, 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
+}
+.cover .tokens td {
+    border: none;
+    padding: 0 3mm;
+    white-space: pre;
+    text-align: center;
+    vertical-align: baseline;
+}
+.cover .tokens__piece td {
+    font-size: 10.5pt;
+    color: #93938e;
+    padding-bottom: 2mm;
+}
+.cover .tokens__id td {
+    font-size: 10.5pt;
+    color: #1a1a1a;
+    border-top: 1px solid #cfcec9;
+    padding-top: 2mm;
 }
 
 .page-break { page-break-after: always; }
@@ -206,6 +251,32 @@ img { max-width: 100%; page-break-inside: avoid; }
 """
 
 
+def render_cover(pdf_path: Path) -> None:
+    """Rasterise page 1 of the finished PDF into a cover image.
+
+    Deliberately taken from the PDF rather than re-rendered from the cover HTML.
+    The image a shop or a social card shows is then the same pixels as page 1 by
+    construction, and cannot drift from the book when the cover changes.
+    """
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:
+        print(f"  {COVER.name} skipped: pypdfium2 is not installed.")
+        print("    pip install -r requirements.txt")
+        return
+
+    doc = pdfium.PdfDocument(str(pdf_path))
+    try:
+        image = doc[0].render(scale=COVER_DPI / 72).to_pil()
+    finally:
+        doc.close()
+
+    image.save(COVER)
+    width, height = image.size
+    size_kb = COVER.stat().st_size / 1024
+    print(f"  {COVER.name}, {width}x{height}, {size_kb:.0f} KB")
+
+
 def main() -> None:
     try:
         from markdown import markdown
@@ -230,6 +301,22 @@ def main() -> None:
         f"<p>{PAGE_BREAK_MARKER}</p>", '<div class="page-break"></div>'
     ).replace(PAGE_BREAK_MARKER, "")
 
+    # tiktoken is not a build dependency, so the ids above cannot be recomputed
+    # here. This is the next best thing: if the title ever changes and the token
+    # list does not, the pieces stop spelling it and the build says so.
+    if "".join(piece for piece, _ in TITLE_TOKENS) != TITLE:
+        sys.exit(
+            "TITLE_TOKENS no longer spells TITLE. Re-encode the title with "
+            "cl100k_base; the command is in the comment above TITLE_TOKENS."
+        )
+
+    piece_cells = "".join(
+        f"<td>{piece}</td>" for piece, _ in TITLE_TOKENS
+    )
+    id_cells = "".join(
+        f"<td>{tok}</td>" for _, tok in TITLE_TOKENS
+    )
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><title>{TITLE}</title></head>
@@ -238,6 +325,10 @@ def main() -> None:
     <h1 class="title">{TITLE}</h1>
     <hr class="rule">
     <p class="subtitle">{SUBTITLE}</p>
+    <table class="tokens">
+      <tr class="tokens__piece">{piece_cells}</tr>
+      <tr class="tokens__id">{id_cells}</tr>
+    </table>
     <p class="author">{AUTHOR}</p>
   </section>
   {html_body}
@@ -248,6 +339,8 @@ def main() -> None:
     HTML(string=html).write_pdf(OUTPUT, stylesheets=[WeasyCSS(string=CSS)])
     size_kb = OUTPUT.stat().st_size / 1024
     print(f"  {OUTPUT.name}, {size_kb:.0f} KB")
+
+    render_cover(OUTPUT)
 
 
 if __name__ == "__main__":
