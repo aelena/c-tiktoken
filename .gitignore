@@ -20,3 +20,7 @@ book/*.epub
 
 # Byte-compiled Python, which the build tooling leaves behind.
 __pycache__/
+
+# Local tool settings. settings.local.json carried an absolute path
+# with a username and the trail of a debugging session, in a public repo.
+.claude/
