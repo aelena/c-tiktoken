@@ -333,22 +333,15 @@ data.
 
 ## Testing Without PCRE2
 
-If PCRE2 isn't installed, the tests won't compile. The tutorial notes
-how to install PCRE2 on common platforms:
+If PCRE2 isn't installed, the tests won't compile. On Debian and Ubuntu,
+which is what this book was written and tested on:
 
 ```bash
-# Ubuntu/Debian
 sudo apt install libpcre2-dev
-
-# macOS
-brew install pcre2
-
-# Windows (vcpkg)
-vcpkg install pcre2
-
-# Windows (MSYS2)
-pacman -S mingw-w64-x86_64-pcre2
 ```
+
+Other platforms package it under some spelling of `pcre2`. This book does not
+give the command, because it has not been run there.
 
 ## Building
 

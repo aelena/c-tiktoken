@@ -73,8 +73,9 @@ curl -o data/cl100k_base.tiktoken \
 
 ```bash
 # Prerequisites:
-#   - GCC 14+ or Clang 18+ (for C23 support)
-#   - PCRE2 (libpcre2-dev on Ubuntu, pcre2 via brew/vcpkg)
+#   - GCC 13+ or Clang 19+. Clang 18 cannot build this: C23 constexpr
+#     for objects arrived in Clang 19.
+#   - PCRE2 (libpcre2-dev on Debian and Ubuntu)
 #   - CMake 3.25+
 
 # Configure

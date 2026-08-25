@@ -288,7 +288,7 @@ Our test file `tests/test_base64.c` includes:
 ## Building and Running
 
 ```bash
-# Configure (requires GCC 14+ or Clang 18+ for C23 support)
+# Configure (requires GCC 13+ or Clang 19+; Clang 18 lacks C23 constexpr)
 cmake -B build -DCMAKE_C_COMPILER=gcc-14
 
 # Build
