@@ -102,7 +102,12 @@ c-tiktoken/
 - **GCC 13 or newer, or Clang 19 or newer.** Clang 18 and earlier cannot build
   this: C23 `constexpr` for objects arrived in Clang 19. GCC 13, GCC 14 and
   Clang 19 are all built and tested in CI.
-- PCRE2 (`libpcre2-dev` on Debian/Ubuntu, `pcre2` on Homebrew)
+- PCRE2, `libpcre2-dev` on Debian and Ubuntu
+
+**Tested on Linux only.** CI builds and runs everything on Ubuntu with GCC 13,
+GCC 14 and Clang 19. The code has no Linux-specific calls and the integration
+test has a Windows branch, so it is likely to build elsewhere, but nobody has
+run it on Windows or macOS and this README is not going to claim otherwise.
 
 ### Build Instructions
 
@@ -295,7 +300,13 @@ Eight chapters, each one component, each building on the last. They are the reas
 
 ### As a book
 
-The same eight chapters are also available as a typeset 62-page PDF and EPUB, *Build a Tokenizer in C*, at **[aelena74.gumroad.com](https://aelena74.gumroad.com)**.
+The same eight chapters are also available as a typeset 62-page PDF and EPUB,
+*Build a Tokenizer in C*, at
+**[aelena74.gumroad.com/l/c-tokenizer](https://aelena74.gumroad.com/l/c-tokenizer)**.
+
+The tutorial in this repository is the same content and stays free. The book is
+the typeset convenience version, and `book/` holds everything needed to build
+it yourself.
 
 The chapters above are free and stay free. The PDF is the convenience version (front matter, one continuous document, proper typography) and you can build it yourself from [`book/`](book/) if you would rather spend five minutes than the price of a coffee. The instructions there are complete and not deliberately hobbled.
 
